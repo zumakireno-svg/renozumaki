@@ -1,4 +1,5 @@
 import sqlite3
+import base64
 import tempfile
 import unittest
 from contextlib import closing
@@ -50,6 +51,23 @@ class ProductSharingTests(unittest.TestCase):
         self.assertIn('og:description" content="Separate description',html)
         self.assertIn('og:image" content="https://cdn.example.org/different.webp',html)
         self.assertIn('rel="canonical" href="https://shop.example/product/og-y',html)
+
+    def test_uploaded_product_image_is_persisted_in_the_database(self):
+        csrf=self.csrf_headers()
+        self.assertEqual(self.client.post('/api/admin/login',json={'username':'admin','password':'Long-test-passphrase-2026!'},headers=csrf).status_code,200)
+        image_bytes=b'\x89PNG\r\n\x1a\n'+b'test-image-payload'
+        data_url='data:image/png;base64,'+base64.b64encode(image_bytes).decode('ascii')
+        product={'id':'uploaded-db-image','name':'Product with image','description':'Stored image','images':[data_url]}
+        response=self.client.put('/api/products',json={'products':[product]},headers=self.csrf_headers())
+        self.assertEqual(response.status_code,200,response.get_data(as_text=True))
+        image_url=response.get_json()['products'][0]['images'][0]
+        self.assertTrue(image_url.startswith('/uploads/'))
+        stored=self.client.get(image_url)
+        self.assertEqual(stored.status_code,200)
+        self.assertEqual(stored.mimetype,'image/png')
+        self.assertEqual(stored.data,image_bytes)
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM product_images').fetchone()[0],1)
 
     def test_authentication_password_change_csrf_and_catalog_acl(self):
         self.assertEqual(self.client.put('/api/products', json={'products': []}).status_code, 400)

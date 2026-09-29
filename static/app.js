@@ -140,9 +140,8 @@ async function saveProductsToServer() {
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.csrf_token },
     body: JSON.stringify({ products: state.products })
   });
-  if (!response.ok) throw new Error('تعذر حفظ المنتجات على الخادم');
-
-  const catalog = await response.json();
+  const catalog = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(catalog.error || 'تعذر حفظ المنتجات على الخادم');
   state.products = catalog.products;
   persistState(state);
 }
@@ -664,7 +663,7 @@ async function handleProductSubmit(event) {
     await saveProductsToServer();
   } catch (error) {
     state.products = previousProducts;
-    window.alert('لم يتم حفظ المنتج على الخادم. تأكد من تشغيل الموقع ثم حاول مرة أخرى قبل مشاركة الرابط.');
+    window.alert(`لم يتم حفظ المنتج على الخادم: ${error.message || 'تعذر الاتصال بقاعدة البيانات.'}`);
     return;
   }
   persistState(state);

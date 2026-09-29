@@ -10,7 +10,7 @@ from uuid import uuid4
 from urllib.parse import urlsplit
 from contextlib import contextmanager
 
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -18,7 +18,7 @@ app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY') or os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32),
     SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true'),
-    MAX_CONTENT_LENGTH=32 * 1024 * 1024,
+    MAX_CONTENT_LENGTH=40 * 1024 * 1024,
 )
 def resolve_database_url():
     preferred = ('DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL_NON_POOLING', 'NEON_DATABASE_URL')
@@ -43,12 +43,6 @@ PRODUCTS = [
  {'id':'svc-04','name':'خدمة تركيب وصيانة الأنظمة','category':'خدمات','badge':'استشارة مجانية','price':'تواصل للاستشارة','oldPrice':'','description':'خدمة تركيب شبكات وأنظمة أمنية مع مراجعة فنية وضبط إعدادات.','specs':['دراسة الموقع','تركيب احترافي'],'images':['https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80']},
  {'id':'cam-05','name':'نظام كاميرات تجاري','category':'أمن','badge':'أفضل اختيار','price':'LE 5,400','oldPrice':'LE 6,500','description':'حل كامل للمؤسسات والورش مع ربط متعدد ومراقبة مباشرة ونسخ احتياطي ذكي.','specs':['8 كاميرات متوافقة','تخزين موسع'],'images':['https://images.unsplash.com/photo-1581092160607-ee2279d0f0d7?auto=format&fit=crop&w=1200&q=80']}
 ]
-
-def get_upload_directory():
-    configured = os.environ.get('UPLOADS_PATH')
-    if configured: return Path(configured)
-    if os.environ.get('VERCEL') == '1': return None
-    return Path(app.instance_path) / 'uploads'
 
 @contextmanager
 def database_connection():
@@ -104,6 +98,7 @@ def initialize_database():
                 except (OSError, ValueError): pass
             _replace_products(db, initial)
         execute(db, '''CREATE TABLE IF NOT EXISTS admin_account (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL, password_hash TEXT NOT NULL)''')
+        execute(db, '''CREATE TABLE IF NOT EXISTS product_images (id TEXT PRIMARY KEY, mime_type TEXT NOT NULL, image_data BYTEA NOT NULL)''')
         # One-time migration of the old environment credential; never use a built-in password.
         if not execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone():
             initial_password=os.environ.get('ADMIN_PASSWORD')
@@ -153,6 +148,18 @@ def absolute_public_image(image):
     if image.startswith('/'): return base_url()+image
     return image
 
+def decode_uploaded_image(data_url):
+    try:
+        header, encoded = data_url.split(',', 1)
+        mime = header[5:].split(';', 1)[0]
+        raw = base64.b64decode(encoded, validate=True)
+        valid_magic = (mime == 'image/jpeg' and raw.startswith(b'\xff\xd8\xff')) or (mime == 'image/png' and raw.startswith(b'\x89PNG\r\n\x1a\n')) or (mime == 'image/gif' and raw.startswith((b'GIF87a', b'GIF89a'))) or (mime == 'image/webp' and len(raw) > 12 and raw.startswith(b'RIFF') and raw[8:12] == b'WEBP')
+        if ';base64' not in header or not valid_magic or len(raw) > 3 * 1024 * 1024:
+            return None
+        return raw, mime
+    except (ValueError, binascii.Error):
+        return None
+
 @app.route('/')
 def home(): return render_template('index.html',products=load_products())
 
@@ -162,7 +169,7 @@ def products_api():
     if not session.get('admin_authenticated'): return jsonify({'error':'Admin login required'}),401
     payload=request.get_json(silent=True)
     if not isinstance(payload,dict) or not isinstance(payload.get('products'),list): return jsonify({'error':'Invalid product data'}),400
-    products=payload['products']; ids=set()
+    products=payload['products']; ids=set(); uploaded_images={}
     for p in products:
         if not isinstance(p,dict) or not isinstance(p.get('name'),str) or not p['name'].strip() or not isinstance(p.get('id'),(str,int)) or isinstance(p.get('id'),bool): return jsonify({'error':'Invalid product data'}),400
         p['id']=str(p['id']).strip()
@@ -177,20 +184,24 @@ def products_api():
                 if parsed.scheme not in ('https','http') and not (not parsed.scheme and image.startswith(('/uploads/','/static/'))):
                     return jsonify({'error':'Invalid product images'}),400
             if image.startswith('data:image/'):
-                upload_dir=get_upload_directory()
-                if upload_dir is None: return jsonify({'error':'Configure durable UPLOADS_PATH or use public image URLs'}),400
-                try:
-                    header,encoded=image.split(',',1); mime=header[5:].split(';',1)[0]
-                    ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','image/gif':'.gif'}.get(mime)
-                    raw=base64.b64decode(encoded,validate=True)
-                    valid_magic=(mime=='image/jpeg' and raw.startswith(b'\xff\xd8\xff')) or (mime=='image/png' and raw.startswith(b'\x89PNG\r\n\x1a\n')) or (mime=='image/gif' and raw.startswith((b'GIF87a',b'GIF89a'))) or (mime=='image/webp' and len(raw)>12 and raw.startswith(b'RIFF') and raw[8:12]==b'WEBP')
-                    if not ext or len(raw)>3*1024*1024 or not valid_magic: raise ValueError()
-                    upload_dir.mkdir(parents=True,exist_ok=True); name=uuid4().hex+ext; (upload_dir/name).write_bytes(raw); images[i]='/uploads/'+name
-                except (ValueError,binascii.Error,OSError): return jsonify({'error':'Invalid product images'}),400
+                decoded=decode_uploaded_image(image)
+                if not decoded: return jsonify({'error':'صورة غير صالحة أو حجمها أكبر من 3 ميجابايت.'}),400
+                name=uuid4().hex; uploaded_images[name]=(decoded[1],decoded[0]); images[i]='/uploads/'+name
         p['images']=images or [DEFAULT_PRODUCT_IMAGE]
     initialize_database()
     with database_connection() as db:
+        for image_id, (mime, raw) in uploaded_images.items():
+            execute(db, 'INSERT INTO product_images(id,mime_type,image_data) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET mime_type=excluded.mime_type,image_data=excluded.image_data', (image_id, mime, raw))
         execute(db, 'DELETE FROM products'); _replace_products(db,products)
+        referenced=set()
+        for row in execute(db, 'SELECT images_json FROM products').fetchall():
+            try: urls=json.loads(row['images_json'] or '[]')
+            except ValueError: urls=[]
+            for url in urls if isinstance(urls,list) else []:
+                if isinstance(url,str) and url.startswith('/uploads/'):
+                    referenced.add(url.rsplit('/',1)[-1])
+        for row in execute(db, 'SELECT id FROM product_images').fetchall():
+            if row['id'] not in referenced: execute(db, 'DELETE FROM product_images WHERE id=?',(row['id'],))
     return jsonify({'products':products,'needs_import':False})
 
 _login_failures={}
@@ -215,9 +226,15 @@ def admin_session(): return jsonify({'authenticated':bool(session.get('admin_aut
 
 @app.route('/uploads/<path:filename>')
 def uploaded_product_image(filename):
-    directory=get_upload_directory()
-    if not directory: abort(404)
-    return send_from_directory(directory,filename,conditional=True)
+    if not filename.isascii() or not filename.isalnum(): abort(404)
+    initialize_database()
+    with database_connection() as db:
+        image=execute(db, 'SELECT mime_type,image_data FROM product_images WHERE id=?',(filename,)).fetchone()
+    if not image: abort(404)
+    response=Response(image['image_data'],mimetype=image['mime_type'])
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Cache-Control']='public, max-age=31536000, immutable'
+    return response
 
 @app.route('/product/<product_id>')
 def product_detail(product_id):
