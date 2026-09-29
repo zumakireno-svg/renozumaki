@@ -37,9 +37,9 @@ python app.py
 gunicorn -w 2 -b 0.0.0.0:8000 app:app
 ```
 
-اضبط `SECRET_KEY` بقيمة عشوائية ثابتة، و`PUBLIC_BASE_URL` بعنوان الموقع العام (مثل `https://example.com`)، و`SESSION_COOKIE_SECURE=1` عند استخدام HTTPS. يمكن استخدام `SETUP_KEY` لحماية التهيئة الأولى. يستخدم التطبيق قاعدة Postgres الدائمة تلقائياً إذا وجد `POSTGRES_URL` أو `DATABASE_URL` أو `POSTGRES_PRISMA_URL` أو `POSTGRES_URL_NON_POOLING` أو `NEON_DATABASE_URL`؛ وإلا يستخدم SQLite محلياً. لا تترك `ADMIN_PASSWORD` القديم مضبوطاً؛ لا يقبل ترحيله إلا إذا كان طوله 12 حرفاً على الأقل.
+اضبط `SECRET_KEY` بقيمة عشوائية ثابتة، و`PUBLIC_BASE_URL` بعنوان الموقع العام (مثل `https://example.com`)، و`SESSION_COOKIE_SECURE=1` عند استخدام HTTPS. يمكن استخدام `SETUP_KEY` لحماية التهيئة الأولى. يحتاج التطبيق دائمًا إلى قاعدة Postgres دائمة، ويقرأ `POSTGRES_URL` أو `DATABASE_URL` أو `POSTGRES_PRISMA_URL` أو `POSTGRES_URL_NON_POOLING` أو `NEON_DATABASE_URL`، كما يتعرف على أسماء المتغيرات ذات البادئة التي تضيفها تكاملات Vercel. لا يستخدم التطبيق SQLite أو `/tmp` لتخزين الموقع. لا تترك `ADMIN_PASSWORD` القديم مضبوطاً؛ لا يقبل ترحيله إلا إذا كان طوله 12 حرفاً على الأقل.
 
-**نشر Vercel:** اربط قاعدة Postgres بالمشروع واجعل `POSTGRES_URL` (أو `DATABASE_URL`) متاحاً لبيئات Production وPreview ثم أعد النشر. التطبيق يستخدمها فعلياً الآن، ويرفض التشغيل على Vercel إذا لم يجد اتصال قاعدة بيانات بدلاً من حفظ تغييرات المنتجات في `/tmp` بصمت. الصور المرفوعة إلى filesystem لا تدوم على Vercel؛ استخدم خدمة ملفات عامة دائمة أو روابط صور HTTPS عامة. التطبيق يرفض data URL uploads هناك إذا لم يضبط `UPLOADS_PATH` دائم.
+**نشر Vercel:** اربط قاعدة Postgres بالمشروع لبيئتي Production وPreview ثم أعد النشر. التطبيق يستخدم اتصال قاعدة البيانات فقط، ويرفض معالجة طلبات البيانات إذا لم يجد متغير اتصال بدلاً من التخزين المؤقت. الصور المرفوعة إلى filesystem لا تدوم على Vercel؛ استخدم خدمة ملفات عامة دائمة أو روابط صور HTTPS عامة. التطبيق يرفض data URL uploads هناك إذا لم يضبط `UPLOADS_PATH` دائم.
 
 بعد النشر، افتح [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)، أدخل رابط `/product/<id>` واضغط **Debug** ثم **Scrape Again** لتحديث نسخة المعاينة المخبأة.
 

@@ -1,6 +1,5 @@
 import base64
 import binascii
-from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -21,8 +20,20 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true'),
     MAX_CONTENT_LENGTH=32 * 1024 * 1024,
 )
-DATABASE_URL = (os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_PRISMA_URL') or os.environ.get('POSTGRES_URL_NON_POOLING') or os.environ.get('NEON_DATABASE_URL') or '').strip()
-DATABASE_FILE = Path(os.environ.get('DATABASE_PATH') or ('/tmp/tech_house.db' if os.environ.get('VERCEL') == '1' else Path(app.instance_path) / 'tech_house.db'))
+def resolve_database_url():
+    preferred = ('DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL_NON_POOLING', 'NEON_DATABASE_URL')
+    for name in preferred:
+        if os.environ.get(name, '').strip():
+            return os.environ[name].strip()
+    # Marketplace integrations can prepend a custom prefix to injected variable names.
+    for name, value in os.environ.items():
+        if value.strip() and name.endswith(('_DATABASE_URL', '_POSTGRES_URL', '_POSTGRES_PRISMA_URL', '_POSTGRES_URL_NON_POOLING')):
+            return value.strip()
+    return ''
+
+DATABASE_URL = resolve_database_url()
+# Set only by isolated tests. The running application never falls back to local files.
+DATABASE_FILE = None
 LEGACY_PRODUCTS_FILE = Path(app.instance_path) / 'products.json'
 DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&h=630&q=80'
 PRODUCTS = [
@@ -41,7 +52,7 @@ def get_upload_directory():
 
 @contextmanager
 def database_connection():
-    """Use the attached durable Postgres service when configured; retain SQLite locally."""
+    """Connect to persistent Postgres in every runtime; SQLite is test-only."""
     if DATABASE_URL:
         try:
             import psycopg
@@ -49,12 +60,11 @@ def database_connection():
         except ImportError as error:
             raise RuntimeError('Install the psycopg[binary] dependency to use the configured Postgres database') from error
         connection = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
-    else:
-        if os.environ.get('VERCEL') == '1':
-            raise RuntimeError('Vercel database is not configured. Set POSTGRES_URL (or DATABASE_URL) in Project Environment Variables.')
-        DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    elif app.config.get('TESTING') and DATABASE_FILE is not None:
         connection = sqlite3.connect(DATABASE_FILE)
         connection.row_factory = sqlite3.Row
+    else:
+        raise RuntimeError('A persistent PostgreSQL database is required. Configure DATABASE_URL or POSTGRES_URL in the deployment environment.')
     try:
         yield connection
         connection.commit()

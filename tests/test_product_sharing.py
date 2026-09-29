@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
 
 import app as app_module
 from werkzeug.security import generate_password_hash
@@ -103,6 +104,17 @@ class ProductSharingTests(unittest.TestCase):
         app_module.initialize_database()
         product = next(p for p in app_module.load_products() if p['id']=='preserved')
         self.assertEqual(product['description'],'Keep me')
+
+    def test_custom_prefixed_postgres_variable_is_detected_and_runtime_has_no_file_fallback(self):
+        with patch.dict('os.environ', {'NEON_CUSTOM_DATABASE_URL':'postgresql://example.invalid/db'}, clear=True):
+            self.assertEqual(app_module.resolve_database_url(),'postgresql://example.invalid/db')
+        app_module.app.config['TESTING']=False
+        try:
+            with self.assertRaisesRegex(RuntimeError,'persistent PostgreSQL database is required'):
+                with app_module.database_connection():
+                    pass
+        finally:
+            app_module.app.config['TESTING']=True
 
 
 if __name__ == '__main__': unittest.main()
