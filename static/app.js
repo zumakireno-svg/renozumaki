@@ -157,11 +157,8 @@ async function validateAdminSession() {
     return;
   }
 
-  if (!getCurrentUser()) {
-    const admin = state.users.find((user) => user.username === 'admin');
-    if (admin) {
-      setCurrentUser({ username: admin.username, name: admin.name, role: admin.role, permissions: admin.permissions });
-    }
+  if (!getCurrentUser() || getCurrentUser().username !== result.username) {
+    setCurrentUser({ username: result.username, name: result.username, role: 'super_admin', permissions: ['view', 'add', 'edit', 'delete'] });
   }
 }
 
@@ -943,8 +940,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('adminSection')?.classList.remove('hidden');
   }
 
-  if (window.location.pathname === '/admin') {
-    document.getElementById('adminLoginView')?.classList.remove('hidden');
-  }
 });
 

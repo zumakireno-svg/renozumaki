@@ -18,7 +18,7 @@
       <h1>أهلاً بك في غرفة التحكم.</h1>
     </div>
     {% for message in get_flashed_messages() %}<p class="admin-success" style="margin-top:18px">{{ icon('badge-check', 16) }}{{ message }}</p>{% endfor %}
-    <form class="admin-login-form" method="post" action="{{ url_for('admin') }}">
+    <form class="admin-login-form" method="post" action="{{ url_for('admin_route') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="admin-username">اسم المستخدم</label>
       <input id="admin-username" name="username" class="admin-input{% if error %} has-error{% endif %}" type="text" dir="ltr" autocomplete="username" autocapitalize="none" required autofocus>

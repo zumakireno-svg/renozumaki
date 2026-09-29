@@ -201,7 +201,7 @@ def admin_login():
 @app.route('/api/admin/logout',methods=['POST'])
 def admin_logout(): session.clear(); return jsonify({'authenticated':False})
 @app.route('/api/admin/session')
-def admin_session(): return jsonify({'authenticated':bool(session.get('admin_authenticated'))})
+def admin_session(): return jsonify({'authenticated':bool(session.get('admin_authenticated')), 'username':session.get('admin_username') if session.get('admin_authenticated') else None})
 
 @app.route('/uploads/<path:filename>')
 def uploaded_product_image(filename):
@@ -222,7 +222,7 @@ def admin_route():
     initialize_database()
     with database_connection() as db: account=execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone()
     if not account: return redirect(url_for('admin_setup'))
-    if session.get('admin_authenticated'): return redirect(url_for('admin_password'))
+    if session.get('admin_authenticated'): return redirect('/#admin')
     if request.method=='POST':
         data=request.form
         now=time.time(); key=request.remote_addr or 'unknown'; attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
@@ -233,7 +233,7 @@ def admin_route():
             attempts.append(now); _login_failures[key]=attempts
             return render_template('admin_login.html',error='اسم المستخدم أو كلمة المرور غير صحيحة'),401
         _login_failures.pop(key,None); session.clear(); session['admin_authenticated']=True; session['admin_username']=credential['username']; csrf_token()
-        return redirect(url_for('admin_password'))
+        return redirect('/#admin')
     return render_template('admin_login.html',error=None)
 
 @app.route('/admin/setup',methods=['GET','POST'])
@@ -248,7 +248,8 @@ def admin_setup():
         elif os.environ.get('SETUP_KEY') and not secrets.compare_digest(request.form.get('setup_key',''),os.environ['SETUP_KEY']): error='تعذر إكمال الإعداد.'
         else:
             with database_connection() as db: execute(db, 'INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
-            return redirect(url_for('admin_route'))
+            session.clear(); session['admin_authenticated']=True; session['admin_username']=username; csrf_token()
+            return redirect('/#admin')
     return render_template('admin_setup.html',error=error,needs_key=bool(os.environ.get('SETUP_KEY')),values={})
 
 @app.route('/admin/password',methods=['GET','POST'])
@@ -272,6 +273,12 @@ def admin_password():
     return render_template('admin_password.html',error=error)
 
 @app.errorhandler(500)
-def internal_error(_error): return render_template('error.html'),500
+def internal_error(error):
+    app.logger.exception('Unhandled server error', exc_info=error.original_exception or error)
+    return render_template('error.html', code=500, title='حدث خطأ في الخادم', message='تعذر إكمال الطلب. حاول مرة أخرى، وإذا استمرت المشكلة راجع سجل الأخطاء في Vercel.'),500
+
+@app.errorhandler(400)
+def bad_request(_error):
+    return render_template('error.html', code=400, title='الطلب غير مكتمل', message='انتهت صلاحية النموذج أو تعذر التحقق منه. أعد تحميل الصفحة وحاول مجدداً.'),400
 
 if __name__=='__main__': app.run()

@@ -66,6 +66,34 @@ class ProductSharingTests(unittest.TestCase):
             stored = db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()[0]
         self.assertNotIn('Another-secure-passphrase-2026!', stored)
 
+    def test_admin_form_login_returns_to_product_dashboard(self):
+        self.client.get('/admin')
+        with self.client.session_transaction() as browser_session:
+            token=browser_session['_csrf']
+        response=self.client.post('/admin',data={'csrf_token':token,'username':'admin','password':'Long-test-passphrase-2026!'})
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(response.headers['Location'],'/#admin')
+        session_state=self.client.get('/api/admin/session').get_json()
+        self.assertTrue(session_state['authenticated'])
+        self.assertEqual(session_state['username'],'admin')
+
+    def test_first_admin_setup_creates_hash_and_opens_dashboard(self):
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
+            db.execute('DELETE FROM admin_account')
+        self.client.get('/admin/setup')
+        with self.client.session_transaction() as browser_session:
+            token=browser_session['_csrf']
+        response=self.client.post('/admin/setup',data={
+            'csrf_token':token,'name':'Store Owner','username':'owner','email':'owner@example.com',
+            'password':'A-strong-owner-password-2026!','password2':'A-strong-owner-password-2026!'
+        })
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(response.headers['Location'],'/#admin')
+        self.assertEqual(self.client.get('/api/admin/session').get_json()['username'],'owner')
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db:
+            digest=db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()[0]
+        self.assertNotIn('A-strong-owner-password-2026!',digest)
+
     def test_csrf_required_for_mutation_and_old_product_rows_survive_migration(self):
         self.assertEqual(self.client.post('/api/admin/login', json={'username':'admin','password':'wrong'}).status_code, 400)
         with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
