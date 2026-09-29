@@ -9,6 +9,7 @@ import sqlite3
 import time
 from uuid import uuid4
 from urllib.parse import urlsplit
+from contextlib import contextmanager
 
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -20,6 +21,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true'),
     MAX_CONTENT_LENGTH=32 * 1024 * 1024,
 )
+DATABASE_URL = (os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_PRISMA_URL') or os.environ.get('POSTGRES_URL_NON_POOLING') or os.environ.get('NEON_DATABASE_URL') or '').strip()
 DATABASE_FILE = Path(os.environ.get('DATABASE_PATH') or ('/tmp/tech_house.db' if os.environ.get('VERCEL') == '1' else Path(app.instance_path) / 'tech_house.db'))
 LEGACY_PRODUCTS_FILE = Path(app.instance_path) / 'products.json'
 DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&h=630&q=80'
@@ -37,15 +39,52 @@ def get_upload_directory():
     if os.environ.get('VERCEL') == '1': return None
     return Path(app.instance_path) / 'uploads'
 
+@contextmanager
+def database_connection():
+    """Use the attached durable Postgres service when configured; retain SQLite locally."""
+    if DATABASE_URL:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as error:
+            raise RuntimeError('Install the psycopg[binary] dependency to use the configured Postgres database') from error
+        connection = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
+    else:
+        if os.environ.get('VERCEL') == '1':
+            raise RuntimeError('Vercel database is not configured. Set POSTGRES_URL (or DATABASE_URL) in Project Environment Variables.')
+        DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(DATABASE_FILE)
+        connection.row_factory = sqlite3.Row
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+def execute(db, sql, params=()):
+    if DATABASE_URL:
+        sql = sql.replace('?', '%s')
+    return db.execute(sql, params)
+
 def initialize_database():
-    DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(DATABASE_FILE)) as db, db:
-        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='products'").fetchone()
-        db.execute("""CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY,name TEXT NOT NULL,category TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',price TEXT NOT NULL DEFAULT '',badge TEXT NOT NULL DEFAULT '',image TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 0)""")
-        cols = {r[1] for r in db.execute('PRAGMA table_info(products)')}
+    with database_connection() as db:
+        if DATABASE_URL:
+            exists = execute(db, "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='products') AS present").fetchone()['present']
+        else:
+            exists = execute(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='products'").fetchone() is not None
+        execute(db, """CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY,name TEXT NOT NULL,category TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',price TEXT NOT NULL DEFAULT '',badge TEXT NOT NULL DEFAULT '',image TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 0)""")
+        if DATABASE_URL:
+            cols = {r['column_name'] for r in execute(db, "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='products'")}
+        else:
+            cols = {r['name'] for r in execute(db, 'PRAGMA table_info(products)')}
         for col, definition in {'old_price':"TEXT NOT NULL DEFAULT ''",'specs_json':"TEXT NOT NULL DEFAULT '[]'",'images_json':"TEXT NOT NULL DEFAULT '[]'"}.items():
-            if col not in cols: db.execute(f'ALTER TABLE products ADD COLUMN {col} {definition}')
-        db.execute("UPDATE products SET images_json=json_array(image) WHERE images_json='[]' AND image!=''")
+            if col not in cols: execute(db, f'ALTER TABLE products ADD COLUMN {col} {definition}')
+        # Migrate the prior single-image schema without relying on SQLite-only JSON functions.
+        for row in execute(db, "SELECT id,image FROM products WHERE images_json='[]' AND image!=''").fetchall():
+            execute(db, 'UPDATE products SET images_json=? WHERE id=?', (json.dumps([row['image']]), row['id']))
         if not exists:
             initial = PRODUCTS
             if LEGACY_PRODUCTS_FILE.exists():
@@ -54,23 +93,22 @@ def initialize_database():
                     if isinstance(legacy,list) and legacy: initial=legacy
                 except (OSError, ValueError): pass
             _replace_products(db, initial)
-        db.execute('''CREATE TABLE IF NOT EXISTS admin_account (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL, password_hash TEXT NOT NULL)''')
+        execute(db, '''CREATE TABLE IF NOT EXISTS admin_account (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL, password_hash TEXT NOT NULL)''')
         # One-time migration of the old environment credential; never use a built-in password.
-        if not db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone():
+        if not execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone():
             initial_password=os.environ.get('ADMIN_PASSWORD')
             if initial_password and len(initial_password) >= 12:
-                db.execute('INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)', (os.environ.get('ADMIN_USERNAME','admin'),generate_password_hash(initial_password)))
+                execute(db, 'INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)', (os.environ.get('ADMIN_USERNAME','admin'),generate_password_hash(initial_password)))
 
 def _replace_products(db, products):
     for position, p in enumerate(products,1):
         images=p.get('images') or ([p.get('image')] if p.get('image') else [DEFAULT_PRODUCT_IMAGE])
-        db.execute('''INSERT INTO products(id,name,category,description,price,badge,image,position,old_price,specs_json,images_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,description=excluded.description,price=excluded.price,badge=excluded.badge,image=excluded.image,position=excluded.position,old_price=excluded.old_price,specs_json=excluded.specs_json,images_json=excluded.images_json''', (str(p['id']),p.get('name',''),p.get('category',''),p.get('description',''),str(p.get('price','')),p.get('badge',''),images[0],position,str(p.get('oldPrice',p.get('old_price',''))),json.dumps(p.get('specs',[]),ensure_ascii=False),json.dumps(images,ensure_ascii=False)))
+        execute(db, '''INSERT INTO products(id,name,category,description,price,badge,image,position,old_price,specs_json,images_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,description=excluded.description,price=excluded.price,badge=excluded.badge,image=excluded.image,position=excluded.position,old_price=excluded.old_price,specs_json=excluded.specs_json,images_json=excluded.images_json''', (str(p['id']),p.get('name',''),p.get('category',''),p.get('description',''),str(p.get('price','')),p.get('badge',''),images[0],position,str(p.get('oldPrice',p.get('old_price',''))),json.dumps(p.get('specs',[]),ensure_ascii=False),json.dumps(images,ensure_ascii=False)))
 
 def load_products():
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as db:
-        db.row_factory=sqlite3.Row
-        rows=db.execute('SELECT * FROM products ORDER BY position,id').fetchall()
+    with database_connection() as db:
+        rows=execute(db, 'SELECT * FROM products ORDER BY position,id').fetchall()
     result=[]
     for r in rows:
         try: images=json.loads(r['images_json'] or '[]')
@@ -141,8 +179,8 @@ def products_api():
                 except (ValueError,binascii.Error,OSError): return jsonify({'error':'Invalid product images'}),400
         p['images']=images or [DEFAULT_PRODUCT_IMAGE]
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as db,db:
-        db.execute('DELETE FROM products'); _replace_products(db,products)
+    with database_connection() as db:
+        execute(db, 'DELETE FROM products'); _replace_products(db,products)
     return jsonify({'products':products,'needs_import':False})
 
 _login_failures={}
@@ -152,8 +190,8 @@ def admin_login():
     if len(attempts)>=5: return jsonify({'error':'تعذر تسجيل الدخول. حاول لاحقاً.'}),429
     data=request.get_json(silent=True) or {}; username=str(data.get('username','')); password=str(data.get('password',''))
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as db: account=db.execute('SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
-    valid=bool(account and secrets.compare_digest(username,account[0]) and check_password_hash(account[1],password))
+    with database_connection() as db: account=execute(db, 'SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
+    valid=bool(account and secrets.compare_digest(username,account['username']) and check_password_hash(account['password_hash'],password))
     if not valid:
         attempts.append(now); _login_failures[key]=attempts
         return jsonify({'error':'اسم المستخدم أو كلمة المرور غير صحيحة'}),401
@@ -182,34 +220,34 @@ def product_detail(product_id):
 @app.route('/admin',methods=['GET','POST'])
 def admin_route():
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as db: account=db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone()
+    with database_connection() as db: account=execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone()
     if not account: return redirect(url_for('admin_setup'))
     if session.get('admin_authenticated'): return redirect(url_for('admin_password'))
     if request.method=='POST':
         data=request.form
         now=time.time(); key=request.remote_addr or 'unknown'; attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
         if len(attempts)>=5: return render_template('admin_login.html',error='تعذر تسجيل الدخول. حاول لاحقاً.'),429
-        with closing(sqlite3.connect(DATABASE_FILE)) as db: credential=db.execute('SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
-        valid=bool(credential and secrets.compare_digest(data.get('username',''),credential[0]) and check_password_hash(credential[1],data.get('password','')))
+        with database_connection() as db: credential=execute(db, 'SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
+        valid=bool(credential and secrets.compare_digest(data.get('username',''),credential['username']) and check_password_hash(credential['password_hash'],data.get('password','')))
         if not valid:
             attempts.append(now); _login_failures[key]=attempts
             return render_template('admin_login.html',error='اسم المستخدم أو كلمة المرور غير صحيحة'),401
-        _login_failures.pop(key,None); session.clear(); session['admin_authenticated']=True; session['admin_username']=credential[0]; csrf_token()
+        _login_failures.pop(key,None); session.clear(); session['admin_authenticated']=True; session['admin_username']=credential['username']; csrf_token()
         return redirect(url_for('admin_password'))
     return render_template('admin_login.html',error=None)
 
 @app.route('/admin/setup',methods=['GET','POST'])
 def admin_setup():
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as db:
-        if db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone(): return redirect(url_for('admin_route'))
+    with database_connection() as db:
+        if execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone(): return redirect(url_for('admin_route'))
     error=None
     if request.method=='POST':
         password=request.form.get('password',''); username=request.form.get('username','admin').strip()
         if len(password)<12 or password!=request.form.get('password2'): error='استخدم كلمة مرور من 12 حرفاً على الأقل وتأكد من تطابقها.'
         elif os.environ.get('SETUP_KEY') and not secrets.compare_digest(request.form.get('setup_key',''),os.environ['SETUP_KEY']): error='تعذر إكمال الإعداد.'
         else:
-            with closing(sqlite3.connect(DATABASE_FILE)) as db,db: db.execute('INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
+            with database_connection() as db: execute(db, 'INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
             return redirect(url_for('admin_route'))
     return render_template('admin_setup.html',error=error,needs_key=bool(os.environ.get('SETUP_KEY')),values={})
 
@@ -222,14 +260,14 @@ def admin_password():
         if len(attempts)>=5: return render_template('admin_password.html',error='تعذر تغيير كلمة المرور. حاول لاحقاً.'),429
         current=request.form.get('current_password',''); new=request.form.get('new_password','')
         initialize_database()
-        with closing(sqlite3.connect(DATABASE_FILE)) as db: row=db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()
-        if not row or not check_password_hash(row[0],current):
+        with database_connection() as db: row=execute(db, 'SELECT password_hash FROM admin_account WHERE id=1').fetchone()
+        if not row or not check_password_hash(row['password_hash'],current):
             attempts.append(now); _login_failures[key]=attempts
             error='تعذر تغيير كلمة المرور. تحقق من البيانات وحاول مجدداً.'
         elif len(new)<12 or new!=request.form.get('confirm_password'): error='كلمة المرور الجديدة يجب أن تكون 12 حرفاً على الأقل وأن تتطابق مع التأكيد.'
         else:
             _login_failures.pop(key,None)
-            with closing(sqlite3.connect(DATABASE_FILE)) as db,db: db.execute('UPDATE admin_account SET password_hash=? WHERE id=1',(generate_password_hash(new),))
+            with database_connection() as db: execute(db, 'UPDATE admin_account SET password_hash=? WHERE id=1',(generate_password_hash(new),))
             session.clear(); flash('تم تغيير كلمة المرور. سجّل الدخول مجدداً.'); return redirect(url_for('admin_route'))
     return render_template('admin_password.html',error=error)
 
