@@ -28,7 +28,7 @@
     <div class="admin-product-row" role="row" data-testid="admin-product-row-{{ product.id }}">
       <div class="admin-product-name"><img src="{{ product_image_src(product.image) }}" alt=""><span><strong>{{ product.name }}</strong><small>{{ product.badge }}</small></span></div>
       <span class="admin-product-category">{{ product.category }}</span>
-      <strong class="admin-product-price">{{ product.price }}</strong>
+      <strong class="admin-product-price">{{ product.price|egp_price }}</strong>
       <div class="admin-row-actions">
         {% if can('edit') %}<a class="admin-icon-button" href="{{ url_for('product_edit', product_id=product.id) }}" aria-label="تعديل {{ product.name }}" data-testid="button-edit-product-{{ product.id }}">{{ icon('pencil', 16) }}</a>{% endif %}
         {% if can('delete') %}<form method="post" action="{{ url_for('product_delete', product_id=product.id) }}" data-confirm="هل أنت متأكد من حذف «{{ product.name }}»؟" style="display:contents">

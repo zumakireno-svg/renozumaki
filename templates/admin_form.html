@@ -31,7 +31,7 @@
         </select>
       </label>
       <label class="admin-field" for="product-price">السعر أو عبارة التوفر
-        <input id="product-price" name="price" class="admin-input" value="{{ values.price }}" maxlength="80" placeholder="تواصل للسعر" data-testid="input-product-price">
+        <input id="product-price" name="price" class="admin-input" value="{{ values.price|egp_price }}" maxlength="80" placeholder="EGP 3,200 أو تواصل للسعر" data-testid="input-product-price">
       </label>
       <label class="admin-field admin-field-wide" for="product-description">وصف مختصر
         <textarea id="product-description" name="description" class="admin-input admin-textarea" maxlength="600" placeholder="ما الذي يميّز هذا المنتج؟" required data-testid="textarea-product-description">{{ values.description }}</textarea>

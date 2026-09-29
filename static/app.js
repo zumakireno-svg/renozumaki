@@ -156,7 +156,7 @@ function renderHeroCarousel() {
     image.alt = product.name || 'منتج من المتجر';
     name.textContent = product.name || 'منتج من المتجر';
     category.textContent = product.category || 'منتجات المتجر';
-    price.textContent = product.price ? `السعر: ${product.price}` : '';
+    price.textContent = product.price ? `السعر: ${formatProductPrice(product.price)}` : '';
     dots.querySelectorAll('button').forEach((dot, dotIndex) => {
       dot.classList.toggle('is-active', dotIndex === heroCarouselIndex);
       dot.setAttribute('aria-current', dotIndex === heroCarouselIndex ? 'true' : 'false');
@@ -258,6 +258,17 @@ async function validateAdminSession() {
 function WhatsAppLink(productName) {
   const text = encodeURIComponent(`السلام عليكم، أريد الاستفسار عن طلب منتج: ${productName}`);
   return `https://wa.me/201111600231?text=${text}`;
+}
+
+function formatProductPrice(value) {
+  const original = String(value ?? '').trim();
+  if (!original) return '';
+  const currency = '(?:EGP|LE|L\\.E\\.|جنيه(?:اً)?|ج\\.?\\s*م\\.?)';
+  const amount = original
+    .replace(new RegExp(`^${currency}\\s*`, 'i'), '')
+    .replace(new RegExp(`\\s*${currency}$`, 'i'), '')
+    .trim();
+  return /[0-9٠-٩]/.test(amount) ? `EGP ${amount}` : original;
 }
 
 function productPageUrl(productId) {
@@ -469,8 +480,8 @@ function renderProducts() {
         <div class="mt-5 flex items-end justify-between gap-3">
           <div>
             <div class="text-[10px] font-black tracking-[0.18em] text-slate-400">السعر</div>
-            <div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(product.price)}</div>
-            ${product.oldPrice ? `<div class="text-xs text-slate-400 line-through">${escapeHtml(product.oldPrice)}</div>` : ''}
+            <div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(formatProductPrice(product.price))}</div>
+            ${product.oldPrice ? `<div class="text-xs text-slate-400 line-through">${escapeHtml(formatProductPrice(product.oldPrice))}</div>` : ''}
           </div>
           <div class="flex flex-col gap-2">
             <button type="button" class="product-preview-btn rounded-full bg-tech-500 px-3 py-2 text-[11px] font-black text-white" data-id="${product.id}">عرض التفاصيل</button>
@@ -523,8 +534,8 @@ function openProductModal(productId) {
   mainImage.decoding = 'async';
   badge.textContent = product.badge || 'منتج';
   title.textContent = product.name;
-  price.textContent = product.price;
-  oldPrice.textContent = product.oldPrice || '';
+  price.textContent = formatProductPrice(product.price);
+  oldPrice.textContent = formatProductPrice(product.oldPrice);
   oldPrice.classList.toggle('hidden', !product.oldPrice);
   description.textContent = product.description;
   specs.innerHTML = (product.specs || []).map((item) => `<li class="flex items-center gap-2">${checkIconMarkup()}${escapeHtml(item)}</li>`).join('');
@@ -656,7 +667,7 @@ function renderProductAdminTable() {
       <img src="${product.images[0]}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" class="h-16 w-16 rounded-xl object-cover" />
       <div class="min-w-0 flex-1">
         <div class="truncate text-sm font-black text-slate-900">${escapeHtml(product.name)}</div>
-        <div class="mt-1 text-[11px] text-slate-500">${escapeHtml(product.category)} • ${escapeHtml(product.price)}</div>
+        <div class="mt-1 text-[11px] text-slate-500">${escapeHtml(product.category)} • ${escapeHtml(formatProductPrice(product.price))}</div>
       </div>
       <div class="flex gap-2">
         <button type="button" class="edit-product-btn rounded-xl border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-700" data-id="${product.id}">تعديل</button>
@@ -681,8 +692,8 @@ function fillProductForm(productId) {
   document.getElementById('productId').value = product.id;
   document.getElementById('productName').value = product.name;
   document.getElementById('productCategory').value = product.category;
-  document.getElementById('productPrice').value = product.price;
-  document.getElementById('productOldPrice').value = product.oldPrice || '';
+  document.getElementById('productPrice').value = formatProductPrice(product.price);
+  document.getElementById('productOldPrice').value = formatProductPrice(product.oldPrice);
   document.getElementById('productBadge').value = product.badge || '';
   document.getElementById('productDescription').value = product.description;
   document.getElementById('productSpecs').value = (product.specs || []).join('\n');
@@ -966,8 +977,8 @@ function renderProductPage(productId) {
   page.classList.remove('hidden');
   document.getElementById('productDetailTitle').textContent = product.name;
   document.getElementById('productDetailBadge').textContent = product.badge || 'منتج';
-  document.getElementById('productDetailPrice').textContent = product.price;
-  document.getElementById('productDetailOldPrice').textContent = product.oldPrice || '';
+  document.getElementById('productDetailPrice').textContent = formatProductPrice(product.price);
+  document.getElementById('productDetailOldPrice').textContent = formatProductPrice(product.oldPrice);
   document.getElementById('productDetailOldPrice').classList.toggle('hidden', !product.oldPrice);
   document.getElementById('productDetailDescription').textContent = product.description;
   document.getElementById('productDetailSpecs').innerHTML = (product.specs || []).map((item) => `<li class="flex items-center gap-2">${checkIconMarkup()}${escapeHtml(item)}</li>`).join('');

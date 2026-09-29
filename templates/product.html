@@ -73,9 +73,9 @@
             <h1 class="mt-4 text-3xl font-black text-slate-900 md:text-4xl">{{ product.name }}</h1>
 
             <div class="mt-5 flex items-end gap-3">
-              <div class="text-3xl font-black text-slate-900">{{ product.price }}</div>
+              <div class="text-3xl font-black text-slate-900">{{ product.price|egp_price }}</div>
               {% if product.oldPrice %}
-                <div class="text-lg text-slate-400 line-through">{{ product.oldPrice }}</div>
+                <div class="text-lg text-slate-400 line-through">{{ product.oldPrice|egp_price }}</div>
               {% endif %}
             </div>
 

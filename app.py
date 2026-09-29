@@ -3,6 +3,7 @@ import binascii
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import sqlite3
 import time
@@ -20,6 +21,20 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true'),
     MAX_CONTENT_LENGTH=40 * 1024 * 1024,
 )
+
+def format_product_price(value):
+    """Show numeric catalog prices with the Egyptian pound abbreviation."""
+    price = str(value or '').strip()
+    if not price:
+        return ''
+    price = re.sub(r'^(?:EGP|LE|L\.E\.|جنيه(?:اً)?|ج\.?\s*م\.?)\s*', '', price, flags=re.IGNORECASE)
+    price = re.sub(r'\s*(?:EGP|LE|L\.E\.|جنيه(?:اً)?|ج\.?\s*م\.?)$', '', price, flags=re.IGNORECASE)
+    if not any(char.isdigit() for char in price):
+        return str(value).strip()
+    return f'EGP {price}'
+
+app.jinja_env.filters['egp_price'] = format_product_price
+
 def resolve_database_url():
     preferred = ('DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL_NON_POOLING', 'NEON_DATABASE_URL')
     for name in preferred:
