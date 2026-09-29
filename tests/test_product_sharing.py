@@ -113,6 +113,34 @@ class ProductSharingTests(unittest.TestCase):
             digest=db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()[0]
         self.assertNotIn('A-strong-owner-password-2026!',digest)
 
+    def test_admin_setup_recovers_existing_primary_account_with_deployment_key(self):
+        with patch.dict('os.environ', {'SETUP_KEY':''}):
+            self.assertEqual(self.client.get('/admin/setup').status_code,302)
+        with patch.dict('os.environ', {'SETUP_KEY':'one-time-recovery-key'}):
+            page=self.client.get('/admin/setup')
+            self.assertEqual(page.status_code,200)
+            self.assertIn('استعادة حساب المدير',page.get_data(as_text=True))
+            with self.client.session_transaction() as browser_session:
+                token=browser_session['_csrf']
+            bad=self.client.post('/admin/setup',data={
+                'csrf_token':token,'setup_key':'wrong-key','username':'new-owner',
+                'password':'New-owner-password-2026!','password2':'New-owner-password-2026!'
+            })
+            self.assertEqual(bad.status_code,200)
+            with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db:
+                self.assertEqual(db.execute('SELECT username FROM admin_account WHERE id=1').fetchone()[0],'admin')
+                original_product_count=db.execute('SELECT COUNT(*) FROM products').fetchone()[0]
+            recovered=self.client.post('/admin/setup',data={
+                'csrf_token':token,'setup_key':'one-time-recovery-key','username':'new-owner',
+                'password':'New-owner-password-2026!','password2':'New-owner-password-2026!'
+            })
+            self.assertEqual(recovered.status_code,302)
+            with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db:
+                account=db.execute('SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM products').fetchone()[0],original_product_count)
+            self.assertEqual(account[0],'new-owner')
+            self.assertNotIn('New-owner-password-2026!',account[1])
+
     def test_csrf_required_for_mutation_and_old_product_rows_survive_migration(self):
         self.assertEqual(self.client.post('/api/admin/login', json={'username':'admin','password':'wrong'}).status_code, 400)
         with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:

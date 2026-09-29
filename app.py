@@ -282,17 +282,32 @@ def admin_route():
 def admin_setup():
     initialize_database()
     with database_connection() as db:
-        if execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone(): return redirect(url_for('admin_route'))
+        account_exists=bool(execute(db, 'SELECT 1 FROM admin_account WHERE id=1').fetchone())
+    setup_key=os.environ.get('SETUP_KEY','')
+    # Existing accounts can only be recovered through this route when an
+    # operator has explicitly enabled it with a deployment-only setup key.
+    if account_exists and not setup_key: return redirect(url_for('admin_route'))
     error=None
     if request.method=='POST':
         password=request.form.get('password',''); username=request.form.get('username','admin').strip()
-        if len(password)<12 or password!=request.form.get('password2'): error='استخدم كلمة مرور من 12 حرفاً على الأقل وتأكد من تطابقها.'
-        elif os.environ.get('SETUP_KEY') and not secrets.compare_digest(request.form.get('setup_key',''),os.environ['SETUP_KEY']): error='تعذر إكمال الإعداد.'
+        now=time.time(); key='setup:'+str(request.remote_addr or 'unknown'); attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
+        if account_exists and len(attempts)>=5: return render_template('admin_setup.html',error='تعذر إكمال الإعداد. حاول لاحقاً.',needs_key=True,recovery=True,values={}),429
+        if not username or len(username)>80: error='اكتب اسم مستخدم صالحاً.'
+        elif len(password)<12 or password!=request.form.get('password2'): error='استخدم كلمة مرور من 12 حرفاً على الأقل وتأكد من تطابقها.'
+        elif setup_key and not secrets.compare_digest(request.form.get('setup_key',''),setup_key):
+            if account_exists:
+                attempts.append(now); _login_failures[key]=attempts
+            error='تعذر إكمال الإعداد.'
         else:
-            with database_connection() as db: execute(db, 'INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
+            with database_connection() as db:
+                if account_exists:
+                    execute(db, 'UPDATE admin_account SET username=?,password_hash=? WHERE id=1',(username,generate_password_hash(password)))
+                else:
+                    execute(db, 'INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
+            _login_failures.pop(key,None)
             session.clear(); session['admin_authenticated']=True; session['admin_username']=username; csrf_token()
             return redirect('/#admin')
-    return render_template('admin_setup.html',error=error,needs_key=bool(os.environ.get('SETUP_KEY')),values={})
+    return render_template('admin_setup.html',error=error,needs_key=bool(setup_key),recovery=account_exists,values={})
 
 @app.route('/admin/password',methods=['GET','POST'])
 def admin_password():
