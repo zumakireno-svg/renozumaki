@@ -75,15 +75,7 @@ const DEFAULT_PRODUCTS = [
   }
 ];
 
-const DEFAULT_USERS = [
-  {
-    username: 'admin',
-    password: '123456',
-    name: 'أحمد خميس',
-    role: 'super_admin',
-    permissions: ['view', 'add', 'edit', 'delete']
-  }
-];
+const DEFAULT_USERS = [];
 
 function getState() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -95,12 +87,14 @@ function getState() {
 
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed.products || !parsed.users) {
+    if (!parsed.products) {
       const refreshed = { products: DEFAULT_PRODUCTS, users: DEFAULT_USERS, session: null };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
       return refreshed;
     }
-    return parsed;
+    const sanitized = { ...parsed, users: DEFAULT_USERS, session: null };
+    persistState(sanitized);
+    return sanitized;
   } catch (error) {
     const refreshed = { products: DEFAULT_PRODUCTS, users: DEFAULT_USERS, session: null };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed));
@@ -140,9 +134,10 @@ async function syncProductsWithServer() {
 }
 
 async function saveProductsToServer() {
+  const csrf = await fetch('/api/admin/csrf').then((r) => r.json());
   const response = await fetch('/api/products', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.csrf_token },
     body: JSON.stringify({ products: state.products })
   });
   if (!response.ok) throw new Error('تعذر حفظ المنتجات على الخادم');
@@ -787,17 +782,11 @@ async function handleAdminLogin(event) {
   const password = document.getElementById('adminPassword').value.trim();
   const errorBox = document.getElementById('adminLoginError');
 
-  const user = state.users.find((entry) => entry.username === username && entry.password === password);
-  if (!user) {
-    errorBox.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
-    errorBox.classList.remove('hidden');
-    return;
-  }
-
   try {
+    const csrf = await fetch('/api/admin/csrf').then((r) => r.json());
     const response = await fetch('/api/admin/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.csrf_token },
       body: JSON.stringify({ username, password })
     });
     if (!response.ok) throw new Error('login failed');
@@ -807,7 +796,8 @@ async function handleAdminLogin(event) {
     return;
   }
 
-  setCurrentUser({ username: user.username, name: user.name, role: user.role, permissions: user.permissions || ['view'] });
+  const user = { username, name: username, role: 'super_admin', permissions: ['view', 'add', 'edit', 'delete'] };
+  setCurrentUser(user);
   errorBox.classList.add('hidden');
   toggleAdminAccess();
   try {
@@ -824,7 +814,8 @@ async function handleAdminLogin(event) {
 }
 
 async function handleAdminLogout() {
-  await fetch('/api/admin/logout', { method: 'POST' });
+  const csrf = await fetch('/api/admin/csrf').then((r) => r.json());
+  await fetch('/api/admin/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrf.csrf_token } });
   setCurrentUser(null);
   toggleAdminAccess();
   document.getElementById('adminLoginForm').reset();

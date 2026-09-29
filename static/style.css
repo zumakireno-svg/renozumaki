@@ -2,30 +2,30 @@
 
 
 :root {
-  --background: 210 33% 97%;
-  --foreground: 218 45% 13%;
-  --card: 0 0% 100%;
-  --card-foreground: 218 45% 13%;
-  --primary: 213 82% 45%;
+  --background: 225 34% 8%;
+  --foreground: 210 30% 94%;
+  --card: 225 28% 12%;
+  --card-foreground: 210 30% 94%;
+  --primary: 188 92% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 207 86% 95%;
-  --secondary-foreground: 213 82% 32%;
-  --muted: 210 22% 93%;
-  --muted-foreground: 216 16% 42%;
-  --accent: 189 76% 45%;
-  --accent-foreground: 218 45% 13%;
-  --border: 211 25% 88%;
-  --input: 211 25% 88%;
-  --ring: 213 82% 45%;
+  --secondary: 225 24% 18%;
+  --secondary-foreground: 188 92% 70%;
+  --muted: 225 22% 16%;
+  --muted-foreground: 218 13% 68%;
+  --accent: 265 85% 66%;
+  --accent-foreground: 0 0% 100%;
+  --border: 220 20% 24%;
+  --input: 220 20% 24%;
+  --ring: 188 92% 50%;
   --destructive: 0 72% 50%;
-  --sidebar: 218 45% 13%;
+  --sidebar: 225 34% 8%;
   --sidebar-foreground: 0 0% 100%;
   --sidebar-border: 218 31% 24%;
-  --sidebar-primary: 189 76% 45%;
+  --sidebar-primary: 188 92% 50%;
   --sidebar-primary-foreground: 218 45% 13%;
-  --sidebar-accent: 218 31% 24%;
+  --sidebar-accent: 225 24% 18%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 189 76% 45%;
+  --sidebar-ring: 188 92% 50%;
   --app-font-sans: 'Cairo', sans-serif;
   --app-font-display: 'IBM Plex Sans Arabic', sans-serif;
   --app-font-mono: 'SFMono-Regular', Consolas, monospace;
@@ -461,6 +461,25 @@ a { color: inherit; text-decoration: none; }
 .perm-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
 .perm-check { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(210 33% 98%); font-size: .75rem; font-weight: 800; cursor: pointer; }
 .perm-check input { width: 16px; height: 16px; accent-color: hsl(var(--primary)); }
+
+/* Tech House dark neon theme */
+body { background: #0b1020; color: #e8eef9; }
+a, button, input, textarea, select { outline-color: #32d9f4; }
+:focus-visible { outline: 3px solid #32d9f4 !important; outline-offset: 3px; }
+.admin-page, .admin-auth-page { background: radial-gradient(ellipse at 85% 0%, rgba(25, 104, 143, .16), transparent 45%), #0b1020; color: #e8eef9; }
+.admin-topbar, .admin-auth-card, .admin-products-panel, .admin-form-panel { background-color: #111a2c; border-color: #26374d; color: #e8eef9; box-shadow: 0 18px 50px rgba(0,0,0,.24); }
+.admin-brand strong, .admin-heading-row h1, .admin-panel-heading h2, .admin-product-name strong, .admin-auth-heading h1 { color: #f4f8ff; }
+.admin-product-row, .admin-table-head { border-color: #26374d; }
+.admin-input, .perm-check { color: #f4f8ff; background: #0c1424; border-color: #34465f; }
+.admin-input::placeholder { color: #9aabc0; }
+.admin-submit-button, .admin-add-button, .admin-save-button { background: #087f99; color: white; box-shadow: 0 0 18px rgba(50,217,244,.12); }
+.admin-submit-button:hover, .admin-add-button:hover, .admin-save-button:hover { background: #0a9ab6; }
+.admin-icon-button, .admin-quiet-button, .admin-store-link, .admin-back-link { color: #c8d5e7; border-color: #34465f; }
+.admin-success { color: #88f0c1; }
+.eyebrow, .admin-product-category, .admin-field-hint { color: #a9bdd4; }
+.admin-auth-orbit { opacity: .35; }
+@media (max-width: 700px) { .admin-top-actions { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 @media (max-width: 700px) {
   .admin-users-grid { grid-template-columns: 1fr auto !important; }
   .admin-role-chip { display: none; }

@@ -5,15 +5,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="{{ product.description }}" />
+    <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:title" content="{{ product.name }} | بيت التكنولوجيا" />
     <meta property="og:description" content="{{ product.description }}" />
     <meta property="og:type" content="product" />
-    <meta property="og:url" content="{{ request.url }}" />
-    <meta property="og:image" content="{{ (request.url_root.rstrip('/') ~ product.images[0]) if product.images[0].startswith('/') else product.images[0] }}" />
+    <meta property="og:url" content="{{ canonical_url }}" />
+    <meta property="og:image" content="{{ social_image }}" />
+    <meta property="og:image:secure_url" content="{{ social_image }}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{ product.name }} | بيت التكنولوجيا" />
     <meta name="twitter:description" content="{{ product.description }}" />
-    <meta name="twitter:image" content="{{ (request.url_root.rstrip('/') ~ product.images[0]) if product.images[0].startswith('/') else product.images[0] }}" />
+    <meta name="twitter:image" content="{{ social_image }}" />
     <title>{{ product.name }} | بيت التكنولوجيا</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,7 +30,7 @@
         }
       };
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   </head>
   <body class="bg-slate-100 text-slate-900 antialiased">
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/90 backdrop-blur">

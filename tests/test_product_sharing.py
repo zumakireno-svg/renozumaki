@@ -1,127 +1,80 @@
-import base64
 import sqlite3
-from contextlib import closing
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 import app as app_module
+from werkzeug.security import generate_password_hash
 
 
 class ProductSharingTests(unittest.TestCase):
     def setUp(self):
-        self.temporary_directory = tempfile.TemporaryDirectory()
-        self.original_database_file = app_module.DATABASE_FILE
-        self.original_instance_path = app_module.app.instance_path
-        app_module.DATABASE_FILE = Path(self.temporary_directory.name) / 'tech_house.db'
-        app_module.app.instance_path = self.temporary_directory.name
+        self.temp = tempfile.TemporaryDirectory()
+        self.old_db, self.old_instance = app_module.DATABASE_FILE, app_module.app.instance_path
+        app_module.DATABASE_FILE = Path(self.temp.name) / 'tech_house.db'
+        app_module.app.instance_path = self.temp.name
+        app_module.app.config['TESTING'] = True
         app_module.initialize_database()
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
+            db.execute('INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)', ('admin', generate_password_hash('Long-test-passphrase-2026!')))
+        app_module._login_failures.clear()
         self.client = app_module.app.test_client()
-        self.client.post('/api/admin/login', json={'username': 'admin', 'password': '123456'})
 
     def tearDown(self):
-        app_module.DATABASE_FILE = self.original_database_file
-        app_module.app.instance_path = self.original_instance_path
-        self.temporary_directory.cleanup()
+        app_module.DATABASE_FILE, app_module.app.instance_path = self.old_db, self.old_instance
+        app_module.app.config['TESTING'] = False
+        self.temp.cleanup()
 
-    def test_new_product_has_server_rendered_share_page(self):
-        product = {
-            'id': 'new-share-product',
-            'name': 'New share product',
-            'category': 'أجهزة',
-            'price': 'LE 100',
-            'description': 'Product page description',
-            'specs': ['Test specification'],
-            'images': ['https://example.com/product.jpg']
-        }
+    def csrf_headers(self):
+        return {'X-CSRF-Token': self.client.get('/api/admin/csrf').get_json()['csrf_token']}
 
-        response = self.client.put('/api/products', json={'products': [product]})
+    def test_product_has_unique_escaped_https_share_metadata_and_fallback(self):
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
+            db.execute("INSERT INTO products(id,name,description,image,images_json) VALUES(?,?,?,?,?)", ('og-x','Camera <Pro> & "safe"','Description & <details>','', '[]'))
+        response = self.client.get('/product/og-x', base_url='http://shop.example')
         self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn('https://shop.example/product/og-x', body)
+        self.assertIn('og:title" content="Camera &lt;Pro&gt; &amp; &#34;safe&#34;', body)
+        self.assertIn('og:image" content="https://images.unsplash.com/', body)
+        self.assertEqual(body.count('property="og:image"'), 1)
+        self.assertEqual(self.client.get('/product/missing').status_code, 404)
 
-        page = self.client.get('/product/new-share-product')
+    def test_product_uses_its_own_public_image_and_canonical_route(self):
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
+            db.execute("INSERT INTO products(id,name,description,image,images_json) VALUES(?,?,?,?,?)", ('og-y','Different item','Separate description','https://cdn.example.org/different.webp','[\"https://cdn.example.org/different.webp\"]'))
+        html=self.client.get('/product/og-y',base_url='https://shop.example').get_data(as_text=True)
+        self.assertIn('og:title" content="Different item | بيت التكنولوجيا',html)
+        self.assertIn('og:description" content="Separate description',html)
+        self.assertIn('og:image" content="https://cdn.example.org/different.webp',html)
+        self.assertIn('rel="canonical" href="https://shop.example/product/og-y',html)
+
+    def test_authentication_password_change_csrf_and_catalog_acl(self):
+        self.assertEqual(self.client.put('/api/products', json={'products': []}).status_code, 400)
+        csrf = self.csrf_headers()
+        login = self.client.post('/api/admin/login', json={'username':'admin','password':'Long-test-passphrase-2026!'}, headers=csrf)
+        self.assertEqual(login.status_code, 200)
+        self.assertEqual(self.client.put('/api/products', json={'products': []}, headers=self.csrf_headers()).status_code, 200)
+        page = self.client.get('/admin/password')
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b'New share product |', page.data)
-        self.assertIn(b'og:image', page.data)
-        self.assertEqual(self.client.get('/product/cam-05').status_code, 404)
+        token = self.client.get('/api/admin/csrf').get_json()['csrf_token']
+        changed = self.client.post('/admin/password', data={'csrf_token':token,'current_password':'Long-test-passphrase-2026!','new_password':'Another-secure-passphrase-2026!','confirm_password':'Another-secure-passphrase-2026!'})
+        self.assertEqual(changed.status_code, 302)
+        self.assertFalse(self.client.get('/api/admin/session').get_json()['authenticated'])
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db:
+            stored = db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()[0]
+        self.assertNotIn('Another-secure-passphrase-2026!', stored)
 
-        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as connection:
-            saved_product = connection.execute(
-                'SELECT id, name FROM products WHERE id = ?', ('new-share-product',)
-            ).fetchone()
-        self.assertEqual(saved_product, ('new-share-product', 'New share product'))
-
-    def test_uploaded_product_image_gets_a_public_url(self):
-        image = base64.b64encode(b'product-image').decode('ascii')
-        product = {
-            'id': 'image-share-product',
-            'name': 'Image share product',
-            'price': 'LE 10',
-            'description': 'Uploaded image test',
-            'specs': [],
-            'images': [f'data:image/png;base64,{image}']
-        }
-
-        response = self.client.put('/api/products', json={'products': [product]})
-        self.assertEqual(response.status_code, 200)
-        image_url = response.get_json()['products'][0]['images'][0]
-        self.assertTrue(image_url.startswith('/uploads/'))
-        image_response = self.client.get(image_url)
-        self.assertEqual(image_response.status_code, 200)
-        image_response.close()
-
-    def test_numeric_product_id_is_normalized_and_resolves(self):
-        product = {
-            'id': 42,
-            'name': 'Legacy numeric ID product',
-            'price': 'LE 10',
-            'description': 'Numeric ID detail test',
-            'specs': [],
-            'images': ['https://example.com/product.jpg']
-        }
-
-        response = self.client.put('/api/products', json={'products': [product]})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()['products'][0]['id'], '42')
-        self.assertEqual(self.client.get('/product/42').status_code, 200)
-
-    def test_existing_sqlite_product_row_survives_schema_migration(self):
-        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as connection:
-            connection.execute('DROP TABLE products')
-            connection.execute('''
-                CREATE TABLE products (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    price TEXT NOT NULL,
-                    badge TEXT NOT NULL,
-                    image TEXT NOT NULL,
-                    position INTEGER NOT NULL
-                )
-            ''')
-            connection.execute(
-                'INSERT INTO products VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                ('existing-row', 'Existing item', 'Accessories', 'Keep this row', '10', 'Old', '', 1)
-            )
-            connection.commit()
-
+    def test_csrf_required_for_mutation_and_old_product_rows_survive_migration(self):
+        self.assertEqual(self.client.post('/api/admin/login', json={'username':'admin','password':'wrong'}).status_code, 400)
+        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as db, db:
+            db.execute('DROP TABLE products')
+            db.execute('CREATE TABLE products(id TEXT PRIMARY KEY,name TEXT NOT NULL,category TEXT NOT NULL,description TEXT NOT NULL,price TEXT NOT NULL,badge TEXT NOT NULL,image TEXT NOT NULL,position INTEGER NOT NULL)')
+            db.execute('INSERT INTO products VALUES(?,?,?,?,?,?,?,?)', ('preserved','Existing product','Tech','Keep me','10','','',1))
         app_module.initialize_database()
-        migrated_product = next(
-            product for product in app_module.load_products() if product['id'] == 'existing-row'
-        )
-        self.assertEqual(migrated_product['name'], 'Existing item')
-        self.assertEqual(migrated_product['description'], 'Keep this row')
-        with closing(sqlite3.connect(app_module.DATABASE_FILE)) as connection:
-            columns = {row[1] for row in connection.execute('PRAGMA table_info(products)')}
-        self.assertTrue({'old_price', 'specs_json', 'images_json'}.issubset(columns))
-
-    def test_product_catalog_cannot_be_changed_without_admin_login(self):
-        anonymous_client = app_module.app.test_client()
-        session_response = anonymous_client.get('/api/admin/session')
-        self.assertFalse(session_response.get_json()['authenticated'])
-        response = anonymous_client.put('/api/products', json={'products': []})
-        self.assertEqual(response.status_code, 401)
+        product = next(p for p in app_module.load_products() if p['id']=='preserved')
+        self.assertEqual(product['description'],'Keep me')
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

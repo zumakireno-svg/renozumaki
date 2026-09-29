@@ -1,365 +1,239 @@
 import base64
 import binascii
 from contextlib import closing
-import hmac
 import json
 import os
 from pathlib import Path
 import secrets
 import sqlite3
+import time
 from uuid import uuid4
+from urllib.parse import urlsplit
 
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = (
-    os.environ.get('SECRET_KEY')
-    or os.environ.get('FLASK_SECRET_KEY')
-    or secrets.token_hex(32)
+app.config.update(
+    SECRET_KEY=os.environ.get('SECRET_KEY') or os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32),
+    SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true'),
+    MAX_CONTENT_LENGTH=32 * 1024 * 1024,
 )
-app.config['ADMIN_USERNAME'] = os.environ.get('ADMIN_USERNAME', 'admin')
-app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', '123456')
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
-DATABASE_FILE = Path(
-    os.environ.get('DATABASE_PATH')
-    or (
-        '/tmp/tech_house.db'
-        if os.environ.get('VERCEL') == '1'
-        else Path(app.instance_path) / 'tech_house.db'
-    )
-)
+DATABASE_FILE = Path(os.environ.get('DATABASE_PATH') or ('/tmp/tech_house.db' if os.environ.get('VERCEL') == '1' else Path(app.instance_path) / 'tech_house.db'))
 LEGACY_PRODUCTS_FILE = Path(app.instance_path) / 'products.json'
-DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80'
-
-
-def get_upload_directory():
-    upload_path = os.environ.get('UPLOADS_PATH')
-    if upload_path:
-        return Path(upload_path)
-    if os.environ.get('VERCEL') == '1':
-        return Path('/tmp/tech-house-uploads')
-    return Path(app.instance_path) / 'uploads'
-
+DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&h=630&q=80'
 PRODUCTS = [
-    {
-        'id': 'cam-01',
-        'name': 'كاميرا مراقبة 4K Pro',
-        'category': 'أمن',
-        'badge': 'مميز',
-        'price': 'LE 3,200',
-        'oldPrice': 'LE 4,100',
-        'description': 'كاميرا خارجية عالية الدقة مع رؤية ليلية قوية وتسجيل مستمر ومقاومة للماء.',
-        'specs': ['دقة 4K Ultra HD', 'رؤية ليلية حتى 30 متر', 'حماية IP66', 'تثبيت سهل وسريع'],
-        'images': [
-            'https://images.unsplash.com/photo-1555618561-2e7a48b3c2c0?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=1200&q=80'
-        ]
-    },
-    {
-        'id': 'net-02',
-        'name': 'موجه شبكة SMB Pro',
-        'category': 'شبكات',
-        'badge': 'جديد',
-        'price': 'LE 2,600',
-        'oldPrice': 'LE 3,300',
-        'description': 'موجه شبكة احترافي يدعم أداء متوازن للمنزل والعمل مع تحكم سهل واتصال مستقر.',
-        'specs': ['سرعة حتى 1.2 Gbps', '4 منافذ LAN', 'حماية WPA3', 'واجهة سهلة الإدارة'],
-        'images': [
-            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1542744173-8e7e534b2089?auto=format&fit=crop&w=1200&q=80'
-        ]
-    },
-    {
-        'id': 'dev-03',
-        'name': 'لوحة تحكم ذكية Home Hub',
-        'category': 'أجهزة',
-        'badge': 'متميز',
-        'price': 'LE 1,900',
-        'oldPrice': 'LE 2,300',
-        'description': 'لوحة تحكم مركزية لإدارة الأجهزة الذكية في المنزل أو المكتب بسهولة عالية.',
-        'specs': ['دعم Zigbee + WiFi', 'تحكم صوتي', 'إدارة أوتوماتيك', 'واجهة عربية'],
-        'images': [
-            'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
-        ]
-    },
-    {
-        'id': 'svc-04',
-        'name': 'خدمة تركيب وصيانة الأنظمة',
-        'category': 'خدمات',
-        'badge': 'استشارة مجانية',
-        'price': 'تواصل للاستشارة',
-        'oldPrice': '',
-        'description': 'خدمة تركيب شبكات وأنظمة أمنية مع مراجعة فنية، ضبط إعدادات، وتوجيه فني حسب الموقع.',
-        'specs': ['دراسة الموقع', 'تركيب احترافي', 'ضبط وإعداد', 'دعم فني مستمر'],
-        'images': [
-            'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80'
-        ]
-    },
-    {
-        'id': 'cam-05',
-        'name': 'نظام كاميرات تجاري',
-        'category': 'أمن',
-        'badge': 'أفضل اختيار',
-        'price': 'LE 5,400',
-        'oldPrice': 'LE 6,500',
-        'description': 'حل كامل للمؤسسات والورش مع ربط متعدد، مراقبة مباشرة، ونسخ احتياطي ذكي.',
-        'specs': ['8 كاميرات متوافقة', 'تخزين موسع', 'مراقبة عبر الهاتف', 'تسجيل 24/7'],
-        'images': [
-            'https://images.unsplash.com/photo-1581092160607-ee2279d0f0d7?auto=format&fit=crop&w=1200&q=80',
-            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80'
-        ]
-    }
+ {'id':'cam-01','name':'كاميرا مراقبة 4K Pro','category':'أمن','badge':'مميز','price':'LE 3,200','oldPrice':'LE 4,100','description':'كاميرا خارجية عالية الدقة مع رؤية ليلية قوية وتسجيل مستمر ومقاومة للماء.','specs':['دقة 4K Ultra HD','رؤية ليلية حتى 30 متر','حماية IP66','تثبيت سهل وسريع'],'images':['https://images.unsplash.com/photo-1555618561-2e7a48b3c2c0?auto=format&fit=crop&w=1200&q=80']},
+ {'id':'net-02','name':'موجه شبكة SMB Pro','category':'شبكات','badge':'جديد','price':'LE 2,600','oldPrice':'LE 3,300','description':'موجه شبكة احترافي يدعم أداء متوازن للمنزل والعمل مع تحكم سهل واتصال مستقر.','specs':['سرعة حتى 1.2 Gbps','4 منافذ LAN','حماية WPA3'],'images':['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80']},
+ {'id':'dev-03','name':'لوحة تحكم ذكية Home Hub','category':'أجهزة','badge':'متميز','price':'LE 1,900','oldPrice':'LE 2,300','description':'لوحة تحكم مركزية لإدارة الأجهزة الذكية في المنزل أو المكتب بسهولة عالية.','specs':['دعم Zigbee + WiFi','تحكم صوتي'],'images':['https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1200&q=80']},
+ {'id':'svc-04','name':'خدمة تركيب وصيانة الأنظمة','category':'خدمات','badge':'استشارة مجانية','price':'تواصل للاستشارة','oldPrice':'','description':'خدمة تركيب شبكات وأنظمة أمنية مع مراجعة فنية وضبط إعدادات.','specs':['دراسة الموقع','تركيب احترافي'],'images':['https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80']},
+ {'id':'cam-05','name':'نظام كاميرات تجاري','category':'أمن','badge':'أفضل اختيار','price':'LE 5,400','oldPrice':'LE 6,500','description':'حل كامل للمؤسسات والورش مع ربط متعدد ومراقبة مباشرة ونسخ احتياطي ذكي.','specs':['8 كاميرات متوافقة','تخزين موسع'],'images':['https://images.unsplash.com/photo-1581092160607-ee2279d0f0d7?auto=format&fit=crop&w=1200&q=80']}
 ]
 
+def get_upload_directory():
+    configured = os.environ.get('UPLOADS_PATH')
+    if configured: return Path(configured)
+    if os.environ.get('VERCEL') == '1': return None
+    return Path(app.instance_path) / 'uploads'
 
 def initialize_database():
     DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(DATABASE_FILE)) as connection, connection:
-        table_exists = connection.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'"
-        ).fetchone() is not None
-        connection.execute('''
-            CREATE TABLE IF NOT EXISTS products (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                category TEXT NOT NULL DEFAULT '',
-                description TEXT NOT NULL DEFAULT '',
-                price TEXT NOT NULL DEFAULT '',
-                badge TEXT NOT NULL DEFAULT '',
-                image TEXT NOT NULL DEFAULT '',
-                position INTEGER NOT NULL DEFAULT 0
-            )
-        ''')
-        existing_columns = {
-            row[1] for row in connection.execute('PRAGMA table_info(products)')
-        }
-        migrations = {
-            'old_price': "TEXT NOT NULL DEFAULT ''",
-            'specs_json': "TEXT NOT NULL DEFAULT '[]'",
-            'images_json': "TEXT NOT NULL DEFAULT '[]'"
-        }
-        for column, definition in migrations.items():
-            if column not in existing_columns:
-                connection.execute(f'ALTER TABLE products ADD COLUMN {column} {definition}')
-
-        legacy_images = connection.execute(
-            "SELECT id, image FROM products WHERE images_json = '[]' AND image != ''"
-        ).fetchall()
-        for product_id, image in legacy_images:
-            connection.execute(
-                'UPDATE products SET images_json = ? WHERE id = ?',
-                (json.dumps([image]), product_id)
-            )
-
-        if not table_exists:
-            initial_products = PRODUCTS
+    with closing(sqlite3.connect(DATABASE_FILE)) as db, db:
+        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='products'").fetchone()
+        db.execute("""CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY,name TEXT NOT NULL,category TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',price TEXT NOT NULL DEFAULT '',badge TEXT NOT NULL DEFAULT '',image TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 0)""")
+        cols = {r[1] for r in db.execute('PRAGMA table_info(products)')}
+        for col, definition in {'old_price':"TEXT NOT NULL DEFAULT ''",'specs_json':"TEXT NOT NULL DEFAULT '[]'",'images_json':"TEXT NOT NULL DEFAULT '[]'"}.items():
+            if col not in cols: db.execute(f'ALTER TABLE products ADD COLUMN {col} {definition}')
+        db.execute("UPDATE products SET images_json=json_array(image) WHERE images_json='[]' AND image!=''")
+        if not exists:
+            initial = PRODUCTS
             if LEGACY_PRODUCTS_FILE.exists():
                 try:
-                    with LEGACY_PRODUCTS_FILE.open(encoding='utf-8') as legacy_file:
-                        legacy_products = json.load(legacy_file)
-                    if isinstance(legacy_products, list) and legacy_products:
-                        initial_products = legacy_products
-                except (OSError, json.JSONDecodeError):
-                    pass
-            _replace_products(connection, initial_products)
+                    legacy=json.loads(LEGACY_PRODUCTS_FILE.read_text(encoding='utf-8'))
+                    if isinstance(legacy,list) and legacy: initial=legacy
+                except (OSError, ValueError): pass
+            _replace_products(db, initial)
+        db.execute('''CREATE TABLE IF NOT EXISTS admin_account (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL, password_hash TEXT NOT NULL)''')
+        # One-time migration of the old environment credential; never use a built-in password.
+        if not db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone():
+            initial_password=os.environ.get('ADMIN_PASSWORD')
+            if initial_password and len(initial_password) >= 12:
+                db.execute('INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)', (os.environ.get('ADMIN_USERNAME','admin'),generate_password_hash(initial_password)))
 
-
-def _replace_products(connection, products):
-    connection.execute('DELETE FROM products')
-    for position, product in enumerate(products, start=1):
-        images = product.get('images') or ([product.get('image')] if product.get('image') else [])
-        if not images:
-            images = [DEFAULT_PRODUCT_IMAGE]
-        specs = product.get('specs') or []
-        connection.execute('''
-            INSERT INTO products (
-                id, name, category, description, price, badge, image,
-                position, old_price, specs_json, images_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            str(product['id']),
-            product['name'],
-            product.get('category') or '',
-            product.get('description') or '',
-            str(product.get('price') or ''),
-            product.get('badge') or '',
-            images[0],
-            position,
-            str(product.get('oldPrice') or product.get('old_price') or ''),
-            json.dumps(specs, ensure_ascii=False),
-            json.dumps(images, ensure_ascii=False)
-        ))
-
+def _replace_products(db, products):
+    for position, p in enumerate(products,1):
+        images=p.get('images') or ([p.get('image')] if p.get('image') else [DEFAULT_PRODUCT_IMAGE])
+        db.execute('''INSERT INTO products(id,name,category,description,price,badge,image,position,old_price,specs_json,images_json) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,description=excluded.description,price=excluded.price,badge=excluded.badge,image=excluded.image,position=excluded.position,old_price=excluded.old_price,specs_json=excluded.specs_json,images_json=excluded.images_json''', (str(p['id']),p.get('name',''),p.get('category',''),p.get('description',''),str(p.get('price','')),p.get('badge',''),images[0],position,str(p.get('oldPrice',p.get('old_price',''))),json.dumps(p.get('specs',[]),ensure_ascii=False),json.dumps(images,ensure_ascii=False)))
 
 def load_products():
     initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute('SELECT * FROM products ORDER BY position, id').fetchall()
+    with closing(sqlite3.connect(DATABASE_FILE)) as db:
+        db.row_factory=sqlite3.Row
+        rows=db.execute('SELECT * FROM products ORDER BY position,id').fetchall()
+    result=[]
+    for r in rows:
+        try: images=json.loads(r['images_json'] or '[]')
+        except ValueError: images=[]
+        try: specs=json.loads(r['specs_json'] or '[]')
+        except ValueError: specs=[]
+        result.append({'id':str(r['id']),'name':r['name'],'category':r['category'],'description':r['description'],'price':r['price'],'badge':r['badge'],'oldPrice':r['old_price'],'specs':specs if isinstance(specs,list) else [],'images':images if isinstance(images,list) and images else [r['image'] or DEFAULT_PRODUCT_IMAGE]})
+    return result
 
-    products = []
-    for row in rows:
-        try:
-            images = json.loads(row['images_json'] or '[]')
-        except (json.JSONDecodeError, TypeError):
-            images = []
-        if not isinstance(images, list) or not images:
-            images = [row['image'] or DEFAULT_PRODUCT_IMAGE]
-        try:
-            specs = json.loads(row['specs_json'] or '[]')
-        except (json.JSONDecodeError, TypeError):
-            specs = []
-        products.append({
-            'id': str(row['id']),
-            'name': row['name'],
-            'category': row['category'],
-            'description': row['description'],
-            'price': row['price'],
-            'badge': row['badge'],
-            'oldPrice': row['old_price'],
-            'specs': specs if isinstance(specs, list) else [],
-            'images': images
-        })
-    return products
+def csrf_token():
+    if '_csrf' not in session: session['_csrf']=secrets.token_urlsafe(32)
+    return session['_csrf']
 
+app.jinja_env.globals['csrf_token']=csrf_token
+@app.before_request
+def protect_csrf():
+    if request.method in ('POST','PUT','PATCH','DELETE'):
+        expected=session.get('_csrf','')
+        supplied=request.form.get('csrf_token') or request.headers.get('X-CSRF-Token','')
+        if not expected or not supplied or not secrets.compare_digest(expected,supplied): abort(400)
 
-def save_products(products):
-    initialize_database()
-    with closing(sqlite3.connect(DATABASE_FILE)) as connection, connection:
-        _replace_products(connection, products)
+@app.route('/api/admin/csrf')
+def admin_csrf(): return jsonify({'csrf_token': csrf_token()})
 
+def base_url():
+    configured=os.environ.get('PUBLIC_BASE_URL','').strip().rstrip('/')
+    if configured: return configured.replace('http://','https://',1)
+    return 'https://' + request.host
 
-initialize_database()
-
-
-def prepare_product_images(products):
-    upload_dir = get_upload_directory()
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    for product in products:
-        images = product.get('images', [])
-        if not isinstance(images, list):
-            return False
-        public_images = []
-        for image in images:
-            if not isinstance(image, str) or not image.startswith('data:image/'):
-                public_images.append(image)
-                continue
-            try:
-                header, encoded = image.split(',', 1)
-                mime_type = header[5:].split(';', 1)[0]
-                extension = {'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif'}.get(mime_type)
-                if not extension or ';base64' not in header:
-                    return False
-                filename = f'{uuid4().hex}{extension}'
-                image_bytes = base64.b64decode(encoded, validate=True)
-                (upload_dir / filename).write_bytes(image_bytes)
-                public_images.append(url_for('uploaded_product_image', filename=filename))
-            except (ValueError, binascii.Error, OSError):
-                return False
-        product['images'] = public_images
-    return True
-
+def absolute_public_image(image):
+    if not image: image=DEFAULT_PRODUCT_IMAGE
+    if image.startswith('/'): return base_url()+image
+    return image
 
 @app.route('/')
-def home():
-    return render_template('index.html', products=load_products())
+def home(): return render_template('index.html',products=load_products())
 
-
-@app.route('/api/products', methods=['GET', 'PUT'])
+@app.route('/api/products',methods=['GET','PUT'])
 def products_api():
-    if request.method == 'GET':
-        return jsonify({
-            'products': load_products(),
-            'needs_import': False
-        })
+    if request.method=='GET': return jsonify({'products':load_products(),'needs_import':False})
+    if not session.get('admin_authenticated'): return jsonify({'error':'Admin login required'}),401
+    payload=request.get_json(silent=True)
+    if not isinstance(payload,dict) or not isinstance(payload.get('products'),list): return jsonify({'error':'Invalid product data'}),400
+    products=payload['products']; ids=set()
+    for p in products:
+        if not isinstance(p,dict) or not isinstance(p.get('name'),str) or not p['name'].strip() or not isinstance(p.get('id'),(str,int)) or isinstance(p.get('id'),bool): return jsonify({'error':'Invalid product data'}),400
+        p['id']=str(p['id']).strip()
+        if not p['id'] or p['id'] in ids: return jsonify({'error':'Invalid product data'}),400
+        ids.add(p['id'])
+        images=p.get('images',[])
+        if not isinstance(images,list) or len(images)>8: return jsonify({'error':'Invalid product images'}),400
+        for i,image in enumerate(images):
+            if not isinstance(image,str): return jsonify({'error':'Invalid product images'}),400
+            if not image.startswith('data:image/'):
+                parsed=urlsplit(image)
+                if parsed.scheme not in ('https','http') and not (not parsed.scheme and image.startswith(('/uploads/','/static/'))):
+                    return jsonify({'error':'Invalid product images'}),400
+            if image.startswith('data:image/'):
+                upload_dir=get_upload_directory()
+                if upload_dir is None: return jsonify({'error':'Configure durable UPLOADS_PATH or use public image URLs'}),400
+                try:
+                    header,encoded=image.split(',',1); mime=header[5:].split(';',1)[0]
+                    ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','image/gif':'.gif'}.get(mime)
+                    raw=base64.b64decode(encoded,validate=True)
+                    valid_magic=(mime=='image/jpeg' and raw.startswith(b'\xff\xd8\xff')) or (mime=='image/png' and raw.startswith(b'\x89PNG\r\n\x1a\n')) or (mime=='image/gif' and raw.startswith((b'GIF87a',b'GIF89a'))) or (mime=='image/webp' and len(raw)>12 and raw.startswith(b'RIFF') and raw[8:12]==b'WEBP')
+                    if not ext or len(raw)>3*1024*1024 or not valid_magic: raise ValueError()
+                    upload_dir.mkdir(parents=True,exist_ok=True); name=uuid4().hex+ext; (upload_dir/name).write_bytes(raw); images[i]='/uploads/'+name
+                except (ValueError,binascii.Error,OSError): return jsonify({'error':'Invalid product images'}),400
+        p['images']=images or [DEFAULT_PRODUCT_IMAGE]
+    initialize_database()
+    with closing(sqlite3.connect(DATABASE_FILE)) as db,db:
+        db.execute('DELETE FROM products'); _replace_products(db,products)
+    return jsonify({'products':products,'needs_import':False})
 
-    if not session.get('admin_authenticated'):
-        return jsonify({'error': 'Admin login required'}), 401
-
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return jsonify({'error': 'A JSON object is required'}), 400
-    products = payload.get('products')
-    if not isinstance(products, list):
-        return jsonify({'error': 'products must be a list'}), 400
-
-    product_ids = set()
-    for product in products:
-        if not isinstance(product, dict) or not isinstance(product.get('name'), str) or not product['name'].strip():
-            return jsonify({'error': 'Each product must have an id and name'}), 400
-        product_id = product.get('id')
-        if isinstance(product_id, bool) or not isinstance(product_id, (str, int)):
-            return jsonify({'error': 'Each product must have an id and name'}), 400
-        product['id'] = str(product_id).strip()
-        if not product['id']:
-            return jsonify({'error': 'Each product must have an id and name'}), 400
-        if product['id'] in product_ids:
-            return jsonify({'error': 'Product IDs must be unique'}), 400
-        product_ids.add(product['id'])
-
-    if not prepare_product_images(products):
-        return jsonify({'error': 'Product images must be valid PNG, JPEG, WEBP, or GIF images'}), 400
-
-    save_products(products)
-    return jsonify({'products': products, 'needs_import': False})
-
-
-@app.route('/api/admin/login', methods=['POST'])
+_login_failures={}
+@app.route('/api/admin/login',methods=['POST'])
 def admin_login():
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return jsonify({'error': 'A JSON object is required'}), 400
+    now=time.time(); key=request.remote_addr or 'unknown'; attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
+    if len(attempts)>=5: return jsonify({'error':'تعذر تسجيل الدخول. حاول لاحقاً.'}),429
+    data=request.get_json(silent=True) or {}; username=str(data.get('username','')); password=str(data.get('password',''))
+    initialize_database()
+    with closing(sqlite3.connect(DATABASE_FILE)) as db: account=db.execute('SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
+    valid=bool(account and secrets.compare_digest(username,account[0]) and check_password_hash(account[1],password))
+    if not valid:
+        attempts.append(now); _login_failures[key]=attempts
+        return jsonify({'error':'اسم المستخدم أو كلمة المرور غير صحيحة'}),401
+    _login_failures.pop(key,None); session.clear(); session['admin_authenticated']=True; session['admin_username']=username; csrf_token()
+    return jsonify({'authenticated':True})
 
-    username = str(payload.get('username', ''))
-    password = str(payload.get('password', ''))
-    valid_username = hmac.compare_digest(username, app.config['ADMIN_USERNAME'])
-    valid_password = hmac.compare_digest(password, app.config['ADMIN_PASSWORD'])
-    if not valid_username or not valid_password:
-        return jsonify({'error': 'Invalid username or password'}), 401
-
-    session['admin_authenticated'] = True
-    return jsonify({'authenticated': True})
-
-
-@app.route('/api/admin/logout', methods=['POST'])
-def admin_logout():
-    session.clear()
-    return jsonify({'authenticated': False})
-
-
+@app.route('/api/admin/logout',methods=['POST'])
+def admin_logout(): session.clear(); return jsonify({'authenticated':False})
 @app.route('/api/admin/session')
-def admin_session():
-    return jsonify({'authenticated': bool(session.get('admin_authenticated'))})
-
+def admin_session(): return jsonify({'authenticated':bool(session.get('admin_authenticated'))})
 
 @app.route('/uploads/<path:filename>')
 def uploaded_product_image(filename):
-    upload_dir = get_upload_directory()
-    image_path = upload_dir / filename
-    if not image_path.is_file() or image_path.parent != upload_dir:
-        abort(404)
-    return send_from_directory(upload_dir, filename)
-
+    directory=get_upload_directory()
+    if not directory: abort(404)
+    return send_from_directory(directory,filename,conditional=True)
 
 @app.route('/product/<product_id>')
 def product_detail(product_id):
-    products = load_products()
-    product = next((item for item in products if str(item.get('id')) == product_id), None)
-    if product is None:
-        return render_template('product_not_found.html', product_id=product_id), 404
-    return render_template('product.html', product=product)
+    product=next((p for p in load_products() if p['id']==product_id),None)
+    if not product: return render_template('product_not_found.html',product_id=product_id),404
+    canonical=base_url()+url_for('product_detail',product_id=product['id'])
+    image=absolute_public_image(product['images'][0])
+    return render_template('product.html',product=product,canonical_url=canonical,social_image=image)
 
-
-@app.route('/admin')
+@app.route('/admin',methods=['GET','POST'])
 def admin_route():
-    return render_template('index.html', products=load_products())
+    initialize_database()
+    with closing(sqlite3.connect(DATABASE_FILE)) as db: account=db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone()
+    if not account: return redirect(url_for('admin_setup'))
+    if session.get('admin_authenticated'): return redirect(url_for('admin_password'))
+    if request.method=='POST':
+        data=request.form
+        now=time.time(); key=request.remote_addr or 'unknown'; attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
+        if len(attempts)>=5: return render_template('admin_login.html',error='تعذر تسجيل الدخول. حاول لاحقاً.'),429
+        with closing(sqlite3.connect(DATABASE_FILE)) as db: credential=db.execute('SELECT username,password_hash FROM admin_account WHERE id=1').fetchone()
+        valid=bool(credential and secrets.compare_digest(data.get('username',''),credential[0]) and check_password_hash(credential[1],data.get('password','')))
+        if not valid:
+            attempts.append(now); _login_failures[key]=attempts
+            return render_template('admin_login.html',error='اسم المستخدم أو كلمة المرور غير صحيحة'),401
+        _login_failures.pop(key,None); session.clear(); session['admin_authenticated']=True; session['admin_username']=credential[0]; csrf_token()
+        return redirect(url_for('admin_password'))
+    return render_template('admin_login.html',error=None)
 
+@app.route('/admin/setup',methods=['GET','POST'])
+def admin_setup():
+    initialize_database()
+    with closing(sqlite3.connect(DATABASE_FILE)) as db:
+        if db.execute('SELECT 1 FROM admin_account WHERE id=1').fetchone(): return redirect(url_for('admin_route'))
+    error=None
+    if request.method=='POST':
+        password=request.form.get('password',''); username=request.form.get('username','admin').strip()
+        if len(password)<12 or password!=request.form.get('password2'): error='استخدم كلمة مرور من 12 حرفاً على الأقل وتأكد من تطابقها.'
+        elif os.environ.get('SETUP_KEY') and not secrets.compare_digest(request.form.get('setup_key',''),os.environ['SETUP_KEY']): error='تعذر إكمال الإعداد.'
+        else:
+            with closing(sqlite3.connect(DATABASE_FILE)) as db,db: db.execute('INSERT INTO admin_account(id,username,password_hash) VALUES(1,?,?)',(username,generate_password_hash(password)))
+            return redirect(url_for('admin_route'))
+    return render_template('admin_setup.html',error=error,needs_key=bool(os.environ.get('SETUP_KEY')),values={})
 
-if __name__ == '__main__':
-    app.run()
+@app.route('/admin/password',methods=['GET','POST'])
+def admin_password():
+    if not session.get('admin_authenticated'): return redirect(url_for('admin_route'))
+    error=None
+    if request.method=='POST':
+        now=time.time(); key='password:'+str(request.remote_addr or 'unknown'); attempts=[t for t in _login_failures.get(key,[]) if now-t<600]
+        if len(attempts)>=5: return render_template('admin_password.html',error='تعذر تغيير كلمة المرور. حاول لاحقاً.'),429
+        current=request.form.get('current_password',''); new=request.form.get('new_password','')
+        initialize_database()
+        with closing(sqlite3.connect(DATABASE_FILE)) as db: row=db.execute('SELECT password_hash FROM admin_account WHERE id=1').fetchone()
+        if not row or not check_password_hash(row[0],current):
+            attempts.append(now); _login_failures[key]=attempts
+            error='تعذر تغيير كلمة المرور. تحقق من البيانات وحاول مجدداً.'
+        elif len(new)<12 or new!=request.form.get('confirm_password'): error='كلمة المرور الجديدة يجب أن تكون 12 حرفاً على الأقل وأن تتطابق مع التأكيد.'
+        else:
+            _login_failures.pop(key,None)
+            with closing(sqlite3.connect(DATABASE_FILE)) as db,db: db.execute('UPDATE admin_account SET password_hash=? WHERE id=1',(generate_password_hash(new),))
+            session.clear(); flash('تم تغيير كلمة المرور. سجّل الدخول مجدداً.'); return redirect(url_for('admin_route'))
+    return render_template('admin_password.html',error=error)
+
+@app.errorhandler(500)
+def internal_error(_error): return render_template('error.html'),500
+
+if __name__=='__main__': app.run()

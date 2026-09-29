@@ -24,6 +24,18 @@ img { max-width: 100%; display: block; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 
+/* Dark technology storefront palette with restrained cyan and violet accents. */
+body { background: #0b1020 !important; color: #e8eef9 !important; }
+.bg-slate-100, .bg-slate-50, .bg-white { background-color: #111a2c !important; }
+.text-slate-900, .text-slate-800, .text-slate-700 { color: #edf4ff !important; }
+.text-slate-600, .text-slate-500, .text-slate-400 { color: #a9bdd4 !important; }
+.border-slate-200, .border-slate-100 { border-color: #2a3a52 !important; }
+.bg-tech-50 { background-color: rgba(34, 211, 238, .12) !important; }
+.text-tech-600, .text-tech-700 { color: #55e2f5 !important; }
+.bg-tech-500 { background-color: #087f99 !important; }
+button:focus-visible, a:focus-visible { outline: 3px solid #4de0f5; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
 .floating-whatsapp {
   position: fixed;
   left: 24px;
