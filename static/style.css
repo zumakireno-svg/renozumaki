@@ -100,6 +100,7 @@ a { color: inherit; text-decoration: none; }
   background: hsl(var(--primary)); color: white; box-shadow: 5px 5px 0 hsl(var(--accent));
 }
 .brand-mark svg { width: 22px; height: 22px; stroke-width: 2.4; }
+.brand-mark img { width: 100%; height: 100%; padding: 2px; display: block; object-fit: contain; border-radius: inherit; background: #fff; }
 .brand-copy { display: grid; gap: 0; line-height: 1.1; }
 .brand-copy strong { font-family: var(--app-font-display); font-size: 1.02rem; }
 .brand-copy span { color: hsl(var(--muted-foreground)); font-size: .66rem; margin-top: 4px; letter-spacing: .04em; }

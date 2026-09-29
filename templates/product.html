@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="{{ product.description }}" />
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}" />
     <link rel="canonical" href="{{ canonical_url }}" />
     <meta property="og:title" content="{{ product.name }} | بيت التكنولوجيا" />
     <meta property="og:description" content="{{ product.description }}" />
@@ -36,7 +37,7 @@
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/90 backdrop-blur">
       <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <a href="/" class="flex items-center gap-3" aria-label="بيت التكنولوجيا">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-tech-500 text-white shadow-lg shadow-tech-500/30">{{ icon('settings', 22) }}</div>
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg shadow-tech-500/20"><img src="{{ url_for('static', filename='brand-mark.png') }}" alt="" class="h-full w-full object-contain" /></div>
           <div class="leading-none">
             <div class="text-lg font-black text-slate-900">بيت التكنولوجيا</div>
             <div class="mt-1 text-[10px] tracking-[0.18em] text-slate-500">TECH HOUSE</div>

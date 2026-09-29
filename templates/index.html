@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>بيت التكنولوجيا | Tech House</title>
     <meta name="description" content="بيت التكنولوجيا — معرض تقني احترافي لمنتجات وخدمات هندسية." />
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -27,7 +28,7 @@
       <header class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/90 backdrop-blur">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <a href="#top" class="flex items-center gap-3" aria-label="بيت التكنولوجيا">
-            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-tech-500 text-white shadow-lg shadow-tech-500/30">{{ icon('settings', 22) }}</div>
+            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg shadow-tech-500/20"><img src="{{ url_for('static', filename='brand-mark.png') }}" alt="" class="h-full w-full object-contain" /></div>
             <div class="leading-none">
               <div class="text-lg font-black text-slate-900">بيت التكنولوجيا</div>
               <div class="mt-1 text-[10px] tracking-[0.18em] text-slate-500">TECH HOUSE</div>
@@ -195,7 +196,7 @@
         <div class="mx-auto max-w-6xl py-8">
           <div id="adminLoginView" class="mx-auto max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl">
             <div class="mb-8 flex items-center gap-3">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-tech-500 text-white">{{ icon('settings', 22) }}</div>
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white"><img src="{{ url_for('static', filename='brand-mark.png') }}" alt="" class="h-full w-full object-contain" /></div>
               <div><div class="text-xl font-black text-slate-900">بيت التكنولوجيا</div><div class="text-[10px] tracking-[0.18em] text-slate-500">ADMIN LOGIN</div></div>
             </div>
             <h2 class="text-3xl font-black text-slate-900">تسجيل الدخول</h2>
