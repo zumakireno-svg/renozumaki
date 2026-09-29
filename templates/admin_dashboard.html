@@ -1,0 +1,43 @@
+{% extends 'admin_base.html' %}
+{% block admin_content %}
+<div class="admin-heading-row">
+  <div>
+    <p class="eyebrow">لوحة المنتجات</p>
+    <h1>المعرض تحت سيطرتك.</h1>
+    <p>أضف، عدّل، أو رتّب المنتجات التي يراها زوار بيت التكنولوجيا.</p>
+  </div>
+  {% if can('add') %}<a class="admin-add-button" href="{{ url_for('product_new') }}" data-testid="button-admin-add-product">
+    {{ icon('plus', 18) }} إضافة منتج
+  </a>{% endif %}
+</div>
+<div class="admin-status-row" aria-live="polite">
+  <span class="admin-count"><strong>{{ products|length }}</strong> منتجات منشورة في المتجر</span>
+  {% for message in get_flashed_messages() %}
+  <span class="admin-success">{{ icon('badge-check', 16) }}{{ message }}</span>
+  {% endfor %}
+</div>
+
+<section class="admin-products-panel" aria-labelledby="admin-products-title">
+  <div class="admin-panel-heading">
+    <div><p class="eyebrow">المخزون الظاهر</p><h2 id="admin-products-title">منتجات المتجر</h2></div>
+    <span class="admin-local-badge">{{ icon('shield-check', 15) }} محفوظ في قاعدة البيانات</span>
+  </div>
+  <div class="admin-table" role="table" aria-label="قائمة منتجات المتجر">
+    <div class="admin-table-head" role="row"><span>المنتج</span><span>القسم</span><span>السعر</span><span>إجراء</span></div>
+    {% for product in products %}
+    <div class="admin-product-row" role="row" data-testid="admin-product-row-{{ product.id }}">
+      <div class="admin-product-name"><img src="{{ product_image_src(product.image) }}" alt=""><span><strong>{{ product.name }}</strong><small>{{ product.badge }}</small></span></div>
+      <span class="admin-product-category">{{ product.category }}</span>
+      <strong class="admin-product-price">{{ product.price }}</strong>
+      <div class="admin-row-actions">
+        {% if can('edit') %}<a class="admin-icon-button" href="{{ url_for('product_edit', product_id=product.id) }}" aria-label="تعديل {{ product.name }}" data-testid="button-edit-product-{{ product.id }}">{{ icon('pencil', 16) }}</a>{% endif %}
+        {% if can('delete') %}<form method="post" action="{{ url_for('product_delete', product_id=product.id) }}" data-confirm="هل أنت متأكد من حذف «{{ product.name }}»؟" style="display:contents">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="admin-icon-button danger" type="submit" aria-label="حذف {{ product.name }}" data-testid="button-delete-product-{{ product.id }}">{{ icon('trash', 16) }}</button>
+        </form>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

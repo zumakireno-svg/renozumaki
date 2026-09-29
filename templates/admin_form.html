@@ -1,0 +1,59 @@
+{% extends 'admin_base.html' %}
+{% block admin_content %}
+<div class="admin-heading-row">
+  <div>
+    <p class="eyebrow">لوحة المنتجات</p>
+    <h1>المعرض تحت سيطرتك.</h1>
+    <p>أضف، عدّل، أو رتّب المنتجات التي يراها زوار بيت التكنولوجيا.</p>
+  </div>
+</div>
+
+<section class="admin-form-panel" aria-labelledby="product-form-title" style="margin-top:29px">
+  <div class="admin-panel-heading">
+    <div>
+      <p class="eyebrow">{{ 'تعديل في المعرض' if product else 'منتج جديد' }}</p>
+      <h2 id="product-form-title">{{ 'حدّث بيانات المنتج' if product else 'أضف منتجاً للمعرض' }}</h2>
+    </div>
+    <a class="admin-quiet-button" href="{{ url_for('admin') }}" style="display:inline-flex;align-items:center" data-testid="button-cancel-product-form">إلغاء</a>
+  </div>
+  <form class="product-admin-form" method="post" enctype="multipart/form-data"
+        action="{{ url_for('product_edit', product_id=product.id) if product else url_for('product_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="admin-form-grid">
+      <label class="admin-field admin-field-wide" for="product-name">اسم المنتج
+        <input id="product-name" name="name" class="admin-input" value="{{ values.name }}" maxlength="120" placeholder="مثال: Lenovo IdeaPad Slim 3" required data-testid="input-product-name">
+      </label>
+      <label class="admin-field" for="product-category">القسم
+        <select id="product-category" name="category" class="admin-input" required data-testid="select-product-category">
+          {% for category in category_names %}
+          <option value="{{ category }}"{% if values.category == category %} selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="admin-field" for="product-price">السعر أو عبارة التوفر
+        <input id="product-price" name="price" class="admin-input" value="{{ values.price }}" maxlength="80" placeholder="تواصل للسعر" data-testid="input-product-price">
+      </label>
+      <label class="admin-field admin-field-wide" for="product-description">وصف مختصر
+        <textarea id="product-description" name="description" class="admin-input admin-textarea" maxlength="600" placeholder="ما الذي يميّز هذا المنتج؟" required data-testid="textarea-product-description">{{ values.description }}</textarea>
+      </label>
+      <div class="admin-field admin-field-wide">
+        <label for="product-image">رابط الصورة (اختياري)</label>
+        {% if product %}
+        <img src="{{ product_image_src(product.image) }}" alt="الصورة الحالية" style="width:96px;height:96px;object-fit:cover;border-radius:10px">
+        {% endif %}
+        <input id="product-image" name="image_url" type="url" class="admin-input" value="{{ values.image }}" placeholder="https://..." data-testid="input-product-image">
+        <span class="admin-field-hint">يمكنك لصق رابط مباشر أو اختيار صورة من جهازك (حتى 3 ميجابايت).{% if product %} اترك الحقلين كما هما للإبقاء على الصورة الحالية.{% endif %}</span>
+        <input class="admin-file-input" name="image_file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="اختيار صورة من الجهاز" data-testid="input-product-image-file">
+      </div>
+      <label class="admin-field" for="product-badge">شارة المنتج
+        <input id="product-badge" name="badge" class="admin-input" value="{{ values.badge }}" maxlength="60" placeholder="اختيار عملي" data-testid="input-product-badge">
+      </label>
+    </div>
+    {% if error %}<p class="admin-error admin-form-error" role="alert">{{ icon('x', 15) }}{{ error }}</p>{% endif %}
+    <div class="admin-form-actions">
+      <button class="admin-save-button" type="submit" data-testid="button-save-product">{{ icon('save', 17) }} حفظ المنتج</button>
+      <a class="admin-quiet-button" href="{{ url_for('admin') }}" style="display:inline-flex;align-items:center" data-testid="button-cancel-product-form-bottom">إلغاء</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

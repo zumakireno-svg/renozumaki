@@ -1,0 +1,143 @@
+{% from '_icons.html' import icon %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-color-mode="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="{{ product.description }}" />
+    <meta property="og:title" content="{{ product.name }} | بيت التكنولوجيا" />
+    <meta property="og:description" content="{{ product.description }}" />
+    <meta property="og:type" content="product" />
+    <meta property="og:url" content="{{ request.url }}" />
+    <meta property="og:image" content="{{ (request.url_root.rstrip('/') ~ product.images[0]) if product.images[0].startswith('/') else product.images[0] }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ product.name }} | بيت التكنولوجيا" />
+    <meta name="twitter:description" content="{{ product.description }}" />
+    <meta name="twitter:image" content="{{ (request.url_root.rstrip('/') ~ product.images[0]) if product.images[0].startswith('/') else product.images[0] }}" />
+    <title>{{ product.name }} | بيت التكنولوجيا</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              tech: { 50: '#eef6ff', 100: '#dfeeff', 500: '#0d6efd', 600: '#0b5ed7', 700: '#0a4db3', 900: '#0f172a' },
+              green: { 500: '#2bb673', 600: '#1f9d5d' }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="bg-slate-100 text-slate-900 antialiased">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/90 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <a href="/" class="flex items-center gap-3" aria-label="بيت التكنولوجيا">
+          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-tech-500 text-white shadow-lg shadow-tech-500/30">{{ icon('settings', 22) }}</div>
+          <div class="leading-none">
+            <div class="text-lg font-black text-slate-900">بيت التكنولوجيا</div>
+            <div class="mt-1 text-[10px] tracking-[0.18em] text-slate-500">TECH HOUSE</div>
+          </div>
+        </a>
+
+        <div class="flex items-center gap-2">
+          <button type="button" id="productColorToggle" aria-label="العودة إلى الوضع الفاتح" title="العودة إلى الوضع الفاتح" aria-pressed="true" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-400 hover:text-slate-950">{{ icon('contrast', 19) }}</button>
+          <a href="/" class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700">العودة للمعرض</a>
+          <a href="https://wa.me/201111600231?text=السلام%20عليكم،%20أريد%20الاستفسار%20عن%20هذا%20المنتج" target="_blank" rel="noreferrer" class="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white">واتساب مباشر</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div class="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-xl md:p-8">
+        <div class="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
+          <div class="bg-slate-100 p-4 rounded-[1.5rem]">
+            <div class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm">
+              <img class="h-[320px] w-full rounded-[1rem] object-cover md:h-[420px]" src="{{ product.images[0] }}" alt="{{ product.name }}" fetchpriority="high" decoding="async" />
+            </div>
+            <div class="mt-4 grid grid-cols-4 gap-3">
+              {% for image in product.images %}
+                <button type="button" class="rounded-xl border {% if loop.first %}border-tech-500 bg-white{% else %}border-slate-200 bg-white{% endif %} p-1 transition hover:border-tech-500">
+                  <img src="{{ image }}" alt="{{ product.name }}" loading="lazy" decoding="async" class="h-20 w-full rounded-lg object-cover" />
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="py-2 md:py-4">
+            <div class="inline-flex items-center rounded-full bg-tech-50 px-3 py-1 text-[10px] font-black tracking-[0.18em] text-tech-600">{{ product.badge or 'منتج' }}</div>
+            <h1 class="mt-4 text-3xl font-black text-slate-900 md:text-4xl">{{ product.name }}</h1>
+
+            <div class="mt-5 flex items-end gap-3">
+              <div class="text-3xl font-black text-slate-900">{{ product.price }}</div>
+              {% if product.oldPrice %}
+                <div class="text-lg text-slate-400 line-through">{{ product.oldPrice }}</div>
+              {% endif %}
+            </div>
+
+            <p class="mt-5 text-base leading-8 text-slate-600">{{ product.description }}</p>
+
+            <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div class="mb-2 text-xs font-black tracking-[0.18em] text-slate-500">المواصفات</div>
+              <ul class="space-y-2 text-sm text-slate-700">
+                {% for item in product.specs %}
+                  <li class="flex items-center gap-2">{{ icon('badge-check', 16) }} {{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+
+            <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a href="https://wa.me/201111600231?text={{ ('السلام عليكم، أريد الاستفسار عن المنتج: ' ~ product.name) | urlencode }}" target="_blank" rel="noreferrer" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600">طلب شراء عبر واتساب</a>
+              <a id="productDetailShareLink" href="{{ url_for('product_detail', product_id=product.id) }}" class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:border-tech-200 hover:text-tech-600">مشاركة المنتج</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      const productShareData = {
+        title: {{ product.name | tojson }},
+        text: {{ product.description | tojson }},
+        url: window.location.href
+      };
+      const productColorToggle = document.getElementById('productColorToggle');
+      const colorModeKey = 'tech_house_color_mode';
+      const applyColorMode = (mode) => {
+        const dark = mode === 'dark';
+        document.documentElement.dataset.colorMode = dark ? 'dark' : 'light';
+        productColorToggle.setAttribute('aria-pressed', String(dark));
+        productColorToggle.setAttribute('aria-label', dark ? 'العودة إلى الوضع الفاتح' : 'تفعيل الوضع الداكن');
+        productColorToggle.setAttribute('title', dark ? 'العودة إلى الوضع الفاتح' : 'تفعيل الوضع الداكن');
+      };
+      let savedColorMode = localStorage.getItem(colorModeKey);
+      if (savedColorMode === 'monochrome') {
+        savedColorMode = 'dark';
+        localStorage.setItem(colorModeKey, savedColorMode);
+      }
+      applyColorMode(savedColorMode || 'dark');
+      productColorToggle?.addEventListener('click', () => {
+        const mode = document.documentElement.dataset.colorMode === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(colorModeKey, mode);
+        applyColorMode(mode);
+      });
+      document.getElementById('productDetailShareLink')?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (navigator.share) {
+          try {
+            await navigator.share(productShareData);
+            return;
+          } catch (error) {
+            if (error.name === 'AbortError') return;
+          }
+        }
+        try {
+          await navigator.clipboard.writeText(productShareData.url);
+          window.alert('تم نسخ رابط المنتج للمشاركة.');
+        } catch (error) {
+          window.prompt('انسخ رابط المنتج:', productShareData.url);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,230 @@
+{% from '_icons.html' import icon %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-color-mode="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>بيت التكنولوجيا | Tech House</title>
+    <meta name="description" content="بيت التكنولوجيا — معرض تقني احترافي لمنتجات وخدمات هندسية." />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              tech: { 50: '#eef6ff', 100: '#dfeeff', 500: '#0d6efd', 600: '#0b5ed7', 700: '#0a4db3', 900: '#0f172a' },
+              green: { 500: '#2bb673', 600: '#1f9d5d' }
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body class="bg-slate-100 text-slate-900 antialiased">
+    <div id="scrollProgress" aria-hidden="true"></div>
+    <div id="app-shell" class="min-h-screen">
+      <header class="sticky top-0 z-40 border-b border-slate-200 bg-slate-100/90 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <a href="#top" class="flex items-center gap-3" aria-label="بيت التكنولوجيا">
+            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-tech-500 text-white shadow-lg shadow-tech-500/30">{{ icon('settings', 22) }}</div>
+            <div class="leading-none">
+              <div class="text-lg font-black text-slate-900">بيت التكنولوجيا</div>
+              <div class="mt-1 text-[10px] tracking-[0.18em] text-slate-500">TECH HOUSE</div>
+            </div>
+          </a>
+
+          <nav class="hidden items-center gap-8 text-sm font-bold text-slate-600 md:flex">
+            <a class="transition hover:text-tech-600" href="#about">عن الشركة</a>
+            <a class="transition hover:text-tech-600" href="#products">المنتجات</a>
+            <a class="transition hover:text-tech-600" href="#why-us">المؤسس</a>
+            <a class="transition hover:text-tech-600" href="#contact">تواصل</a>
+          </nav>
+
+          <div class="flex items-center gap-2">
+            <button type="button" data-color-toggle aria-label="العودة إلى الوضع الفاتح" title="العودة إلى الوضع الفاتح" aria-pressed="true" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-slate-400 hover:text-slate-950">{{ icon('contrast', 19) }}</button>
+            <a href="https://wa.me/201111600231?text=السلام%20عليهم،%20أريد%20الاستفسار%20عن%20منتج%20تقني" target="_blank" rel="noreferrer" class="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 md:inline-flex">واتساب مباشر</a>
+            <button id="mobileMenuToggle" class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 md:hidden" aria-label="فتح القائمة">{{ icon('menu', 20) }}</button>
+          </div>
+        </div>
+        <nav id="mobileMenu" class="hidden border-t border-slate-200 bg-white px-4 py-3 md:hidden">
+          <div class="flex flex-col gap-3 text-sm font-bold text-slate-600">
+            <a href="#about">عن الشركة</a>
+            <a href="#products">المنتجات</a>
+            <a href="#why-us">المؤسس</a>
+            <a href="#contact">تواصل</a>
+          </div>
+        </nav>
+      </header>
+
+      <main id="top">
+        <section class="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(13,110,253,0.13),transparent_30%),linear-gradient(135deg,#f8fbff_0%,#edf4ff_45%,#e8f4f8_100%)] py-16 md:py-24">
+          <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div data-motion="hero-copy">
+              <div class="mb-5 inline-flex items-center rounded-full border border-tech-200 bg-white px-4 py-2 text-xs font-extrabold tracking-[0.18em] text-tech-600">حلول تقنية وهندسية موثوقة</div>
+              <h1 class="text-4xl font-black leading-tight text-slate-900 md:text-6xl">اختر الحل الصحيح.<br /><span class="hero-title-accent text-tech-500">اعمل بذكاء.</span></h1>
+              <p class="mt-6 max-w-xl text-lg leading-9 text-slate-600">من كاميرات المراقبة إلى أنظمة الشبكات، نقترح لك حلولاً عملية ومضمونة بإشراف المهندس أحمد خميس، مهندس ميكاترونكس، مع دعم فني حقيقي وتوصيات هندسية واضحة.</p>
+              <div class="mt-8 flex flex-wrap gap-3">
+                <a href="#products" class="inline-flex items-center gap-2 rounded-2xl bg-tech-500 px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-tech-500/30 transition hover:bg-tech-600">تصفح المنتجات</a>
+                <a href="https://wa.me/201111600231?text=السلام%20عليهم،%20أريد%20الاستفسار%20عن%20حل%20تقني" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-extrabold text-slate-700 transition hover:border-tech-200 hover:text-tech-600">طلب استشارة</a>
+              </div>
+              <div class="mt-8 flex flex-wrap gap-6 text-sm font-bold text-slate-600"><span class="inline-flex items-center gap-2">{{ icon('badge-check', 16) }} ضمان على المنتجات</span><span class="inline-flex items-center gap-2">{{ icon('wrench', 16) }} تركيب وضبط</span><span class="inline-flex items-center gap-2">{{ icon('headphones', 16) }} دعم مباشر</span></div>
+            </div>
+
+            <div class="relative" data-motion="hero-visual">
+              <div class="absolute -right-10 top-10 h-28 w-28 rounded-full bg-tech-200/70 blur-3xl"></div>
+              <div class="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-emerald-200/70 blur-3xl"></div>
+              <div class="hero-display-stage relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 p-4 shadow-2xl" data-tilt-card>
+                <img class="h-[420px] w-full rounded-[1.5rem] object-cover opacity-80" src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80" alt="مكتب تقني حديث" loading="eager" fetchpriority="high" decoding="async" />
+                <div class="absolute bottom-8 right-8 z-10 rounded-2xl bg-white/90 p-4 text-right shadow-xl backdrop-blur">
+                  <div class="text-[10px] font-black tracking-[0.22em] text-tech-600">مهندس مختص</div>
+                  <div class="mt-2 text-xl font-black text-slate-900">م. أحمد خميس</div>
+                  <div class="text-xs text-slate-600">Mechatronics Engineer</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="about" class="py-16 md:py-20">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mb-8 text-center" data-motion="reveal">
+              <div class="text-xs font-black tracking-[0.22em] text-tech-600">WHO WE ARE</div>
+              <h2 class="mt-4 text-3xl font-black text-slate-900 md:text-5xl">مستوى فني يفهم احتياجك أولا.</h2>
+            </div>
+            <div class="grid gap-6 lg:grid-cols-3">
+              <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"><div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-tech-50 text-tech-600">{{ icon('network', 26) }}</div><h3 class="text-xl font-black text-slate-900">حلول شبكات ومراقبة</h3><p class="mt-3 text-sm leading-8 text-slate-600">نرسم لك البنية المناسبة من كاميرات، مسجلات، وشبكات، مع تفعيل الأنظمة ومراجعة الأداء وتوفير الاستقرار.</p></div>
+              <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"><div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-tech-50 text-tech-600">{{ icon('cpu', 26) }}</div><h3 class="text-xl font-black text-slate-900">أنظمة ذكية ومكائن</h3><p class="mt-3 text-sm leading-8 text-slate-600">نختار لك المنتجات المناسبة لموقعك من أجهزة ذكية، وحدات تحكم، ومكونات ميكاترونكس بناءً على الاحتياج الفعلي.</p></div>
+              <div class="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"><div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-tech-50 text-tech-600">{{ icon('wrench', 26) }}</div><h3 class="text-xl font-black text-slate-900">دعم ما بعد البيع</h3><p class="mt-3 text-sm leading-8 text-slate-600">بعد الشراء لا تنتهي العلاقة، بل تستمر الاستشارة والدعم، مع ضبط الإعدادات وصيانة النظام عند الحاجة.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="products" class="bg-slate-200/60 py-16 md:py-20">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between" data-motion="reveal">
+              <div>
+                <div class="text-xs font-black tracking-[0.22em] text-tech-600">CATALOG</div>
+                <h2 class="mt-3 text-3xl font-black text-slate-900 md:text-5xl">منتجات وخدمات مختارة بعناية</h2>
+              </div>
+              <div class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600">المنتجات الظاهرة: <span id="productCount" class="mr-2 text-tech-600">0</span></div>
+            </div>
+
+            <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between" data-motion="reveal">
+              <div class="relative w-full lg:max-w-md">
+                <input id="productSearch" type="search" placeholder="ابحث عن منتج أو فئة..." class="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 pr-12 text-sm text-slate-700 outline-none transition focus:border-tech-500 focus:ring-4 focus:ring-tech-100" />
+                <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{{ icon('search', 18) }}</span>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button type="button" data-filter="الكل" class="filter-btn active rounded-full border border-tech-500 bg-tech-500 px-4 py-2 text-xs font-black text-white">الكل</button>
+                <button type="button" data-filter="أجهزة" class="filter-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">أجهزة</button>
+                <button type="button" data-filter="شبكات" class="filter-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">شبكات</button>
+                <button type="button" data-filter="أمن" class="filter-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">أمن</button>
+                <button type="button" data-filter="خدمات" class="filter-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600">خدمات</button>
+              </div>
+            </div>
+
+            <div id="productGrid" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3"></div>
+          </div>
+        </section>
+
+        <section id="why-us" class="py-16 md:py-20">
+          <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div class="relative"><img class="h-[420px] w-full rounded-[2rem] object-cover shadow-2xl" src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80" alt="المهندس أحمد خميس" loading="lazy" decoding="async" /><div class="absolute bottom-6 right-6 rounded-3xl bg-slate-900 p-5 text-right text-white shadow-2xl"><div class="text-lg font-black">المهندس أحمد خميس</div><div class="mt-1 text-xs text-slate-300">Mechatronics Engineer</div></div></div>
+            <div data-motion="reveal">
+              <div class="text-xs font-black tracking-[0.22em] text-tech-600">FOUNDER PROFILE</div>
+              <h2 class="mt-3 text-3xl font-black text-slate-900 md:text-5xl">خبرة هندسية، ومصداقية في القرار.</h2>
+              <p class="mt-5 text-base leading-9 text-slate-600">بيت التكنولوجيا يدار تحت إشراف المهندس أحمد خميس، مهندس ميكاترونكس، وهو مسؤول عن اختيار الحلول، مراجعة المواصفات، وضبط الأنظمة لضمان الأداء الأمثل. كل منتج أو خدمة نعرضها تُقاس بمعيار عملي ومفاهيمي لا مجرد تسويق.</p>
+              <div class="mt-8 space-y-4">
+                <div class="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4"><div class="flex h-12 w-12 items-center justify-center rounded-xl bg-tech-50 text-xl text-tech-600">1</div><div><div class="text-lg font-black text-slate-900">فهم الاحتياج أولاً</div><div class="mt-1 text-sm text-slate-600">نبدأ بأسئلة واضحة عن الموقع، الاستخدام، والميزانية قبل أي اقتراح.</div></div></div>
+                <div class="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4"><div class="flex h-12 w-12 items-center justify-center rounded-xl bg-tech-50 text-xl text-tech-600">2</div><div><div class="text-lg font-black text-slate-900">اختيار تقني منطقي</div><div class="mt-1 text-sm text-slate-600">نوازن بين الكفاءة، الاستدامة، وسهولة الصيانة قبل طلب الشراء.</div></div></div>
+                <div class="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4"><div class="flex h-12 w-12 items-center justify-center rounded-xl bg-tech-50 text-xl text-tech-600">3</div><div><div class="text-lg font-black text-slate-900">دعم مستمر</div><div class="mt-1 text-sm text-slate-600">تواصل مباشر، ضبط فني، ومتابعة عند الحاجة بدلًا من البيع الفوري فقط.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" class="bg-slate-900 py-16 text-white md:py-20">
+          <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.2fr] lg:px-8">
+            <div data-motion="reveal">
+              <div class="text-xs font-black tracking-[0.22em] text-emerald-300">CONTACT</div>
+              <h2 class="mt-3 text-3xl font-black md:text-5xl">تواصل معنا واترك التفاصيل.</h2>
+              <p class="mt-5 max-w-lg text-base leading-9 text-slate-300">ارسل احتياجك، أو وصف ما يحتاجه عملك، وسنقترح لك الخيار الأفضل من منتجاتنا وخدماتنا التقنية.</p>
+              <div class="mt-8 flex flex-wrap gap-3 text-sm font-bold text-slate-200"><a href="tel:+201111600231" class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">{{ icon('phone', 16) }} 01111600231</a><a href="https://wa.me/201111600231?text=السلام%20عليهم،%20أريد%20الاستفسار%20عن%20منتج%20أو%20خدمة" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-emerald-300">{{ icon('message-circle', 16) }} واتساب مباشر</a></div>
+            </div>
+            <div class="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm" data-motion="reveal">
+              <div class="space-y-5 text-sm text-slate-300">
+                <div class="flex items-start gap-3"><span class="text-emerald-300">{{ icon('map-pin', 20) }}</span><div><div class="font-black text-white">العنوان</div><div class="mt-1 leading-7">مدينة نصر، القاهرة، مصر</div></div></div>
+                <div class="flex items-start gap-3"><span class="text-emerald-300">{{ icon('clock', 20) }}</span><div><div class="font-black text-white">مواعيد العمل</div><div class="mt-1 leading-7">السبت – الخميس: 10:00 صباحاً – 10:00 مساءً</div></div></div>
+                <div class="flex items-start gap-3"><span class="text-emerald-300">{{ icon('building-2', 20) }}</span><div><div class="font-black text-white">المالك</div><div class="mt-1 leading-7">بيت التكنولوجيا — بإشراف المهندس أحمد خميس</div></div></div>
+              </div>
+              <a href="https://wa.me/201111600231?text=السلام%20عليهم،%20أريد%20بدء%20محادثة%20عن%20منتج%20أو%20خدمة" target="_blank" rel="noreferrer" class="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600">ابدأ محادثة واتساب</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="border-t border-slate-200 bg-slate-950 text-white">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div class="text-sm font-bold text-slate-300">© بيت التكنولوجيا — م. أحمد خميس</div>
+          <div class="flex items-center gap-4 text-sm text-slate-400"><a href="#products" class="transition hover:text-white">المعرض</a><a href="#contact" class="transition hover:text-white">تواصل</a><span class="hidden md:inline" data-secret-admin="/admin">.</span></div>
+        </div>
+      </footer>
+
+      <a href="https://wa.me/201111600231?text=السلام%20عليهم،%20أريد%20الاستفسار%20عن%20طلب%20منتج" target="_blank" rel="noreferrer" class="floating-whatsapp" aria-label="واتساب">{{ icon('message-circle', 25) }}</a>
+
+      <div id="productModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 p-4 backdrop-blur-sm md:p-8">
+        <div class="mx-auto max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+          <button id="closeModal" class="absolute left-5 top-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/80 text-slate-700 shadow-lg" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+          <div class="grid max-h-[92vh] overflow-y-auto md:grid-cols-[1.05fr_0.95fr]">
+            <div class="bg-slate-100 p-4 md:p-6"><div class="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm"><img id="modalMainImage" class="h-[320px] w-full rounded-[1rem] object-cover md:h-[430px]" src="" alt="" /></div><div id="modalThumbs" class="mt-4 grid grid-cols-4 gap-3"></div></div>
+            <div class="p-5 md:p-8">
+              <div id="modalBadge" class="inline-flex items-center rounded-full bg-tech-50 px-3 py-1 text-[10px] font-black tracking-[0.18em] text-tech-600"></div>
+              <h3 id="modalTitle" class="mt-4 text-2xl font-black text-slate-900 md:text-3xl"></h3>
+              <div class="mt-5 flex items-end gap-3"><div id="modalPrice" class="text-3xl font-black text-slate-900"></div><div id="modalOldPrice" class="text-lg text-slate-400 line-through"></div></div>
+              <p id="modalDescription" class="mt-5 text-sm leading-8 text-slate-600"></p>
+              <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><div class="mb-2 text-xs font-black tracking-[0.18em] text-slate-500">المواصفات</div><ul id="modalSpecs" class="space-y-2 text-sm text-slate-700"></ul></div>
+              <a id="modalBuyButton" href="#" target="_blank" rel="noreferrer" class="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-600">طلب شراء عبر WhatsApp</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="adminSection" class="hidden fixed inset-0 z-[60] overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm">
+        <div class="mx-auto max-w-6xl py-8">
+          <div id="adminLoginView" class="mx-auto max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl">
+            <div class="mb-8 flex items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-tech-500 text-white">{{ icon('settings', 22) }}</div>
+              <div><div class="text-xl font-black text-slate-900">بيت التكنولوجيا</div><div class="text-[10px] tracking-[0.18em] text-slate-500">ADMIN LOGIN</div></div>
+            </div>
+            <h2 class="text-3xl font-black text-slate-900">تسجيل الدخول</h2>
+            <p class="mt-2 text-sm leading-7 text-slate-600">الدخول متاح فقط للمشرفين المعتمدين وبمسار مخفي.</p>
+            <form id="adminLoginForm" class="mt-7 space-y-5">
+              <div><label for="adminUsername" class="mb-2 block text-sm font-black text-slate-700">اسم المستخدم</label><input id="adminUsername" type="text" autocomplete="username" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none focus:border-tech-500 focus:ring-4 focus:ring-tech-100" placeholder="اكتب اسم المستخدم" /></div>
+              <div><label for="adminPassword" class="mb-2 block text-sm font-black text-slate-700">كلمة المرور</label><input id="adminPassword" type="password" autocomplete="current-password" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none focus:border-tech-500 focus:ring-4 focus:ring-tech-100" placeholder="اكتب كلمة المرور" /></div>
+              <button type="submit" class="w-full rounded-2xl bg-tech-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-tech-500/30 transition hover:bg-tech-600">الدخول إلى لوحة الإدارة</button>
+            </form>
+            <div id="adminLoginError" class="mt-4 hidden rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"></div>
+          </div>
+
+          <div id="adminDashboardView" class="hidden space-y-8 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl md:p-8">
+            <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
+              <div><div class="text-xs font-black tracking-[0.18em] text-tech-600">ADMIN DASHBOARD</div><h2 class="mt-2 text-3xl font-black text-slate-900">لوحة تحكم بيت التكنولوجيا</h2></div>
+              <div class="flex items-center gap-3"><a href="/" class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-700">العودة للموقع</a><button id="adminLogoutBtn" type="button" class="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-black text-red-600">تسجيل الخروج</button></div>
+            </div>
+            <div class="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+              <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><div class="mb-4 flex items-center justify-between gap-3"><h3 class="text-xl font-black text-slate-900">إدارة المنتجات</h3><button id="newProductBtn" type="button" class="rounded-full bg-tech-500 px-4 py-2 text-xs font-black text-white">+ إضافة منتج</button></div><div id="productAdminTable" class="space-y-3"></div></div>
+              <div class="space-y-6">
+                <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><h3 class="text-lg font-black text-slate-900">إضافة أو تعديل المنتج</h3><form id="productForm" class="mt-5 space-y-4"><input id="productId" type="hidden" /><div><label class="mb-2 block text-xs font-black text-slate-700">اسم المنتج</label><input id="productName" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">الفئة</label><select id="productCategory" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"><option value="أجهزة">أجهزة</option><option value="شبكات">شبكات</option><option value="أمن">أمن</option><option value="خدمات">خدمات</option></select></div><div><label class="mb-2 block text-xs font-black text-slate-700">السعر</label><input id="productPrice" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">السعر القديم / الخصم</label><input id="productOldPrice" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" placeholder="اختياري" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">الشارة</label><input id="productBadge" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" placeholder="مميز / جديد / عرض" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">الوصف</label><textarea id="productDescription" rows="4" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"></textarea></div><div><label class="mb-2 block text-xs font-black text-slate-700">المواصفات (سطر واحد لكل خاصية)</label><textarea id="productSpecs" rows="4" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" placeholder="عرض 4K&#10;دعم 24/7&#10;تثبيت سهل"></textarea></div><div><label class="mb-2 block text-xs font-black text-slate-700">صور المنتج</label><input id="productImages" type="file" accept="image/*" multiple class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700" /></div><div class="flex gap-3 pt-2"><button type="submit" class="rounded-xl bg-tech-500 px-4 py-2.5 text-xs font-black text-white">حفظ المنتج</button><button id="cancelProductEdit" type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700">إلغاء</button></div></form></div>
+                <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5"><h3 class="text-lg font-black text-slate-900">إدارة المشرفين</h3><div id="userAdminList" class="mt-4 space-y-3"></div><form id="userForm" class="mt-4 space-y-3"><div><label class="mb-2 block text-xs font-black text-slate-700">الاسم</label><input id="userName" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">اسم المستخدم</label><input id="userUsername" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">كلمة المرور / PIN</label><input id="userPassword" type="password" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800" placeholder="الرجاء إدخالها يدويًا" /></div><div><label class="mb-2 block text-xs font-black text-slate-700">الدور</label><select id="userRole" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"><option value="viewer">مشاهد</option><option value="editor">محرر</option><option value="manager">مدير</option><option value="super_admin">Super Admin</option></select></div><div><label class="mb-2 block text-xs font-black text-slate-700">الصلاحيات</label><div class="grid grid-cols-2 gap-2 text-xs text-slate-700"><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"><input type="checkbox" value="view" class="user-permission" checked /> عرض</label><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"><input type="checkbox" value="add" class="user-permission" /> إضافة</label><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"><input type="checkbox" value="edit" class="user-permission" /> تعديل</label><label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"><input type="checkbox" value="delete" class="user-permission" /> حذف</label></div></div><button type="submit" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-xs font-black text-white">حفظ المشرف</button></form></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}إدارة المنتجات | بيت التكنولوجيا{% endblock %}
+{% block description %}لوحة إدارة منتجات بيت التكنولوجيا.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block og_title %}إدارة المنتجات | بيت التكنولوجيا{% endblock %}
+{% block og_description %}مساحة إدارة منتجات بيت التكنولوجيا.{% endblock %}
+{% block body %}
+<div class="admin-page" dir="rtl">
+  <header class="admin-topbar">
+    <div class="admin-topbar-inner">
+      <a class="admin-brand" href="{{ url_for('home') }}" data-testid="link-admin-top-brand">
+        <span class="brand-mark">{{ icon('cpu') }}</span>
+        <span><strong>بيت التكنولوجيا</strong><small>مساحة الإدارة</small></span>
+      </a>
+      <div class="admin-top-actions">
+        <span class="admin-role-chip" title="{{ current_user()['name'] }}">{{ current_user()['name'] }} · {{ role_label(current_user()) }}</span>
+        {% if current_user()['is_super'] %}<a class="admin-store-link" href="{{ url_for('users_list') }}" data-testid="link-admin-users">{{ icon('users', 15) }} المشرفون</a>{% endif %}
+        <a class="admin-store-link" href="{{ url_for('home') }}" data-testid="link-admin-storefront">{{ icon('arrow-up-left', 15) }} واجهة المتجر</a>
+        <form method="post" action="{{ url_for('admin_logout') }}" style="display:contents">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="admin-logout-button" type="submit" data-testid="button-admin-logout">{{ icon('log-out', 16) }} خروج</button>
+        </form>
+      </div>
+    </div>
+  </header>
+  <main class="admin-main">
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='admin.js') }}" defer></script>{% endblock %}

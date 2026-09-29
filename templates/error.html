@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} | بيت التكنولوجيا{% endblock %}
+{% block robots %}noindex{% endblock %}
+{% block body %}
+<div class="admin-auth-page" dir="rtl">
+  <div class="admin-auth-card">
+    <div class="admin-auth-heading">
+      <p class="eyebrow">خطأ {{ code }}</p>
+      <h1>{{ title }}</h1>
+      {% if message %}<p>{{ message }}</p>{% endif %}
+    </div>
+    <a class="admin-back-link" href="{{ url_for('home') }}">العودة إلى واجهة المتجر {{ icon('arrow-up-left', 15) }}</a>
+  </div>
+</div>
+{% endblock %}

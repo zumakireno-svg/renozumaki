@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}الإعداد الأول | بيت التكنولوجيا{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block body %}
+<div class="admin-auth-page" dir="rtl">
+  <div class="admin-auth-orbit admin-auth-orbit-one" aria-hidden="true"></div>
+  <div class="admin-auth-card">
+    <a class="admin-brand" href="{{ url_for('home') }}">
+      <span class="brand-mark">{{ icon('cpu') }}</span>
+      <span><strong>بيت التكنولوجيا</strong><small>الإعداد الأول</small></span>
+    </a>
+    <div class="admin-auth-heading">
+      <p class="eyebrow">حساب المدير العام</p>
+      <h1>أنشئ حسابك.</h1>
+      <p>اكتب بياناتك وكلمة السر بنفسك. هذا الحساب هو الوحيد الذي يدير المشرفين والصلاحيات.</p>
+    </div>
+    <form class="admin-login-form" method="post" action="{{ url_for('admin_setup') }}" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if needs_key %}
+      <label for="s-key">مفتاح الإعداد</label>
+      <input id="s-key" name="setup_key" class="admin-input" type="password" autocomplete="off" required>
+      {% endif %}
+      <label for="s-name" style="margin-top:14px">الاسم</label>
+      <input id="s-name" name="name" class="admin-input" value="{{ values.get('name', '') }}" required>
+      <label for="s-user" style="margin-top:14px">اسم المستخدم</label>
+      <input id="s-user" name="username" class="admin-input" dir="ltr" autocapitalize="none" value="{{ values.get('username', '') }}" required>
+      <label for="s-mail" style="margin-top:14px">البريد الإلكتروني</label>
+      <input id="s-mail" name="email" type="email" class="admin-input" dir="ltr" value="{{ values.get('email', '') }}" required>
+      <label for="s-pass" style="margin-top:14px">كلمة السر</label>
+      <input id="s-pass" name="password" class="admin-input" type="password" autocomplete="new-password" minlength="6" required>
+      <label for="s-pass2" style="margin-top:14px">أعد كتابة كلمة السر</label>
+      <input id="s-pass2" name="password2" class="admin-input" type="password" autocomplete="new-password" minlength="6" required>
+      {% if error %}<p class="admin-error" role="alert" style="margin-top:12px">{{ icon('x', 15) }}{{ error }}</p>{% endif %}
+      <button class="admin-submit-button" type="submit">إنشاء الحساب {{ icon('arrow-left') }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

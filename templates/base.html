@@ -1,0 +1,22 @@
+{% from '_icons.html' import icon %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>{% block title %}بيت التكنولوجيا | Tech House{% endblock %}</title>
+  <meta name="description" content="{% block description %}بيت التكنولوجيا — شريكك القريب لاختيار وتركيب أجهزة الكمبيوتر والشبكات والإكسسوارات في مصر.{% endblock %}">
+  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}بيت التكنولوجيا | التقنية ببساطة{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}اختيارات واضحة، تجهيز نظيف، ورد إنساني مباشر على واتساب.{% endblock %}">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ar_EG">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% block body %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

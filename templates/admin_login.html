@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}إدارة المنتجات | بيت التكنولوجيا{% endblock %}
+{% block description %}لوحة إدارة بيت التكنولوجيا.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block og_title %}بيت التكنولوجيا{% endblock %}
+{% block og_description %}بيت التكنولوجيا{% endblock %}
+{% block body %}
+<div class="admin-auth-page" dir="rtl">
+  <div class="admin-auth-orbit admin-auth-orbit-one" aria-hidden="true"></div>
+  <div class="admin-auth-orbit admin-auth-orbit-two" aria-hidden="true"></div>
+  <div class="admin-auth-card">
+    <a class="admin-brand" href="{{ url_for('home') }}">
+      <span class="brand-mark">{{ icon('cpu') }}</span>
+      <span><strong>بيت التكنولوجيا</strong><small>مساحة الإدارة</small></span>
+    </a>
+    <div class="admin-auth-heading">
+      <p class="eyebrow">دخول الفريق</p>
+      <h1>أهلاً بك في غرفة التحكم.</h1>
+    </div>
+    {% for message in get_flashed_messages() %}<p class="admin-success" style="margin-top:18px">{{ icon('badge-check', 16) }}{{ message }}</p>{% endfor %}
+    <form class="admin-login-form" method="post" action="{{ url_for('admin') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="admin-username">اسم المستخدم</label>
+      <input id="admin-username" name="username" class="admin-input{% if error %} has-error{% endif %}" type="text" dir="ltr" autocomplete="username" autocapitalize="none" required autofocus>
+      <label for="admin-password" style="margin-top:14px">كلمة السر</label>
+      <input id="admin-password" name="password" class="admin-input{% if error %} has-error{% endif %}" type="password" autocomplete="current-password" {% if error %}aria-describedby="admin-login-error" aria-invalid="true"{% endif %} required>
+      {% if error %}<p class="admin-error" id="admin-login-error" role="alert" style="margin-top:12px">{{ icon('x', 15) }}{{ error }}</p>{% endif %}
+      <button class="admin-submit-button" type="submit">دخول لوحة الإدارة {{ icon('arrow-left') }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

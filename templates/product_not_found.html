@@ -1,0 +1,22 @@
+{% from '_icons.html' import icon %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-color-mode="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>المنتج غير موجود</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-100 text-slate-900 antialiased">
+    <main class="flex min-h-screen items-center justify-center px-4">
+      <div class="max-w-lg rounded-[2rem] border border-red-200 bg-white p-8 text-center shadow-xl">
+        <div class="text-red-600">{{ icon('triangle-alert', 44) }}</div>
+        <h1 class="mt-5 text-3xl font-black text-red-700">المنتج غير موجود</h1>
+        <p class="mt-4 text-base leading-8 text-slate-600">
+          الرابط الذي طلبته لا يتطابق مع منتجات المعرض الحالية، أو أن المنتج تم حذفه.
+        </p>
+        <a href="/" class="mt-8 inline-flex rounded-full bg-tech-500 px-6 py-3 text-sm font-black text-white shadow-lg shadow-tech-500/30">العودة إلى المعرض</a>
+      </div>
+    </main>
+  </body>
+</html>

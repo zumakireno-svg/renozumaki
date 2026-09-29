@@ -1,0 +1,52 @@
+{% extends 'admin_base.html' %}
+{% block admin_content %}
+<section class="admin-form-panel" style="margin-top:29px">
+  <div class="admin-panel-heading">
+    <div><p class="eyebrow">{{ 'تعديل مشرف' if target else 'مشرف جديد' }}</p><h2>{{ 'حدّث بيانات المشرف' if target else 'أضف مشرفاً' }}</h2></div>
+    <a class="admin-quiet-button" href="{{ url_for('users_list') }}" style="display:inline-flex;align-items:center">إلغاء</a>
+  </div>
+  <form class="product-admin-form" method="post" autocomplete="off"
+        action="{{ url_for('user_edit', user_id=target.id) if target else url_for('user_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="admin-form-grid">
+      <label class="admin-field" for="u-name">الاسم <input id="u-name" name="name" class="admin-input" value="{{ values.name }}" required></label>
+      <label class="admin-field" for="u-mail">البريد الإلكتروني <input id="u-mail" name="email" type="email" dir="ltr" class="admin-input" value="{{ values.email }}" required></label>
+      <label class="admin-field" for="u-user">اسم المستخدم <input id="u-user" name="username" dir="ltr" autocapitalize="none" class="admin-input" value="{{ values.username }}" required></label>
+      <label class="admin-field" for="u-active">الحالة
+        <select id="u-active" name="active" class="admin-input" {% if target and target.is_super %}disabled{% endif %}>
+          <option value="1" {% if values.active %}selected{% endif %}>مفعّل</option>
+          <option value="" {% if not values.active %}selected{% endif %}>موقوف</option>
+        </select>
+      </label>
+      <label class="admin-field" for="u-pass">{{ 'كلمة سر جديدة (اتركها فارغة للإبقاء على الحالية)' if target else 'كلمة السر' }}
+        <input id="u-pass" name="password" type="password" class="admin-input" autocomplete="new-password" minlength="6" {% if not target %}required{% endif %}>
+      </label>
+      <label class="admin-field" for="u-pass2">إعادة كتابة كلمة السر
+        <input id="u-pass2" name="password2" type="password" class="admin-input" autocomplete="new-password" minlength="6" {% if not target %}required{% endif %}>
+      </label>
+      {% if target and target.is_super %}
+      <p class="admin-field-hint admin-field-wide">المدير العام يملك كل الصلاحيات دائماً ولا يمكن تغييرها أو حذف الحساب.</p>
+      {% else %}
+      <div class="admin-field admin-field-wide">
+        <label for="u-role">نوع الدور</label>
+        <select id="u-role" class="admin-input" data-role-select>
+          {% for key, (label, perms) in ROLE_PRESETS.items() %}<option value="{{ key }}" data-perms="{{ perms|join(',') }}" {% if values.role == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          <option value="custom" {% if values.role == 'custom' %}selected{% endif %}>مخصص</option>
+        </select>
+        <span class="admin-field-hint">اختر دوراً جاهزاً أو عدّل الصلاحيات يدوياً. «عرض» مفعّلة دائماً.</span>
+        <div class="perm-grid">
+          {% for key, label in PERMISSIONS %}
+          <label class="perm-check"><input type="checkbox" name="perm_{{ key }}" value="1" data-perm="{{ key }}" {% if key in values.perms %}checked{% endif %} {% if key == 'view' %}checked onclick="return false"{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if error %}<p class="admin-error admin-form-error" role="alert">{{ icon('x', 15) }}{{ error }}</p>{% endif %}
+    <div class="admin-form-actions">
+      <button class="admin-save-button" type="submit">{{ icon('save', 17) }} حفظ</button>
+      <a class="admin-quiet-button" href="{{ url_for('users_list') }}" style="display:inline-flex;align-items:center">إلغاء</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
