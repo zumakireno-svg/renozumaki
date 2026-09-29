@@ -12,21 +12,35 @@ from uuid import uuid4
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session, url_for
 
 app = Flask(__name__)
-Path(app.instance_path).mkdir(parents=True, exist_ok=True)
-SECRET_KEY_FILE = Path(app.instance_path) / 'secret_key'
-app.secret_key = os.environ.get('FLASK_SECRET_KEY')
-if not app.secret_key:
-    if not SECRET_KEY_FILE.exists():
-        SECRET_KEY_FILE.write_text(secrets.token_hex(32), encoding='utf-8')
-    app.secret_key = SECRET_KEY_FILE.read_text(encoding='utf-8').strip()
+app.config['SECRET_KEY'] = (
+    os.environ.get('SECRET_KEY')
+    or os.environ.get('FLASK_SECRET_KEY')
+    or secrets.token_hex(32)
+)
 app.config['ADMIN_USERNAME'] = os.environ.get('ADMIN_USERNAME', 'admin')
 app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', '123456')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
-DATABASE_FILE = Path(app.instance_path) / 'tech_house.db'
+DATABASE_FILE = Path(
+    os.environ.get('DATABASE_PATH')
+    or (
+        '/tmp/tech_house.db'
+        if os.environ.get('VERCEL') == '1'
+        else Path(app.instance_path) / 'tech_house.db'
+    )
+)
 LEGACY_PRODUCTS_FILE = Path(app.instance_path) / 'products.json'
 DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80'
+
+
+def get_upload_directory():
+    upload_path = os.environ.get('UPLOADS_PATH')
+    if upload_path:
+        return Path(upload_path)
+    if os.environ.get('VERCEL') == '1':
+        return Path('/tmp/tech-house-uploads')
+    return Path(app.instance_path) / 'uploads'
 
 PRODUCTS = [
     {
@@ -104,7 +118,7 @@ PRODUCTS = [
 
 
 def initialize_database():
-    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+    DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(DATABASE_FILE)) as connection, connection:
         table_exists = connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'"
@@ -224,7 +238,7 @@ initialize_database()
 
 
 def prepare_product_images(products):
-    upload_dir = Path(app.instance_path) / 'uploads'
+    upload_dir = get_upload_directory()
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     for product in products:
@@ -326,7 +340,7 @@ def admin_session():
 
 @app.route('/uploads/<path:filename>')
 def uploaded_product_image(filename):
-    upload_dir = Path(app.instance_path) / 'uploads'
+    upload_dir = get_upload_directory()
     image_path = upload_dir / filename
     if not image_path.is_file() or image_path.parent != upload_dir:
         abort(404)
@@ -348,4 +362,4 @@ def admin_route():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run()
