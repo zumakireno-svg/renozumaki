@@ -75,12 +75,21 @@
             <div class="relative" data-motion="hero-visual">
               <div class="absolute -right-10 top-10 h-28 w-28 rounded-full bg-tech-200/70 blur-3xl"></div>
               <div class="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-emerald-200/70 blur-3xl"></div>
-              <div class="hero-display-stage relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 p-4 shadow-2xl" data-tilt-card>
-                <img class="h-[420px] w-full rounded-[1.5rem] object-cover opacity-80" src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80" alt="مكتب تقني حديث" loading="eager" fetchpriority="high" decoding="async" />
-                <div class="absolute bottom-8 right-8 z-10 rounded-2xl bg-white/90 p-4 text-right shadow-xl backdrop-blur">
-                  <div class="text-[10px] font-black tracking-[0.22em] text-tech-600">مهندس مختص</div>
-                  <div class="mt-2 text-xl font-black text-slate-900">م. أحمد خميس</div>
-                  <div class="text-xs text-slate-600">Mechatronics Engineer</div>
+              <div class="hero-display-stage relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 p-3 shadow-2xl" data-tilt-card>
+                <a id="heroProductLink" class="hero-product-link group relative block overflow-hidden rounded-[1.5rem] bg-slate-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-tech-400" href="#products" aria-label="تصفح المنتجات">
+                  <img id="heroProductImage" class="h-[420px] w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.03]" src="" alt="" loading="eager" fetchpriority="high" decoding="async" />
+                  <span class="hero-product-shade absolute inset-0" aria-hidden="true"></span>
+                  <span class="absolute inset-x-4 bottom-4 rounded-2xl border border-white/15 bg-slate-950/85 p-4 text-right text-white shadow-xl backdrop-blur-sm sm:inset-x-6 sm:bottom-6">
+                    <span id="heroProductCategory" class="block text-xs font-bold text-cyan-300">منتجات المتجر</span>
+                    <span id="heroProductName" class="mt-1 block text-xl font-black sm:text-2xl">اكتشف منتجاتنا</span>
+                    <span id="heroProductPrice" class="mt-1 block text-sm font-bold text-slate-200"></span>
+                    <span class="mt-3 inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-xs font-extrabold text-slate-950 transition group-hover:bg-cyan-300">عرض المنتج</span>
+                  </span>
+                </a>
+                <div class="hero-carousel-controls flex items-center justify-between gap-3 px-2 pt-3" aria-label="التحكم في المنتجات المعروضة">
+                  <button id="heroPrevious" class="hero-carousel-button" type="button" aria-label="المنتج السابق">&#8249;</button>
+                  <div id="heroProductDots" class="flex min-h-10 flex-1 items-center justify-center gap-2" role="group" aria-label="اختر منتجًا"></div>
+                  <button id="heroNext" class="hero-carousel-button" type="button" aria-label="المنتج التالي">&#8250;</button>
                 </div>
               </div>
             </div>

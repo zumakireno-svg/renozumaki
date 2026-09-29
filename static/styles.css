@@ -151,6 +151,38 @@ html[data-color-mode="dark"] select { background-color: #111720 !important; colo
   will-change: transform;
 }
 
+.hero-product-link { min-height: 250px; }
+.hero-product-shade { background: linear-gradient(180deg, rgba(2, 6, 23, .04) 32%, rgba(2, 6, 23, .35) 60%, rgba(2, 6, 23, .74) 100%); pointer-events: none; }
+.hero-carousel-controls { direction: ltr; }
+.hero-carousel-button {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, .42);
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, .82);
+  color: #e2e8f0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.hero-carousel-button:hover { border-color: #22d3ee; background: #164e63; color: #cffafe; }
+.hero-carousel-button:focus-visible, .hero-carousel-dot:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
+.hero-carousel-dot { width: .55rem; height: .55rem; border-radius: 9999px; background: #64748b; transition: width .2s ease, background-color .2s ease; }
+.hero-carousel-dot.is-active { width: 1.5rem; background: #22d3ee; }
+
+@media (max-width: 639px) {
+  .hero-product-link img { height: 340px; }
+  .hero-carousel-button { width: 2.25rem; height: 2.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-display-stage, .hero-product-link img, .hero-carousel-button, .hero-carousel-dot { transition: none !important; }
+}
+
 .hero-display-stage::before {
   position: absolute;
   inset: 0;

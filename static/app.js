@@ -108,6 +108,100 @@ function persistState(nextState) {
 
 const state = getState();
 const browserProductsBeforeSqlite = [...state.products];
+let heroCarouselIndex = 0;
+let heroCarouselTimer = null;
+let heroCarouselEventsReady = false;
+
+function renderHeroCarousel() {
+  const link = document.getElementById('heroProductLink');
+  const image = document.getElementById('heroProductImage');
+  const name = document.getElementById('heroProductName');
+  const category = document.getElementById('heroProductCategory');
+  const price = document.getElementById('heroProductPrice');
+  const dots = document.getElementById('heroProductDots');
+  const previous = document.getElementById('heroPrevious');
+  const next = document.getElementById('heroNext');
+  if (!link || !image || !name || !category || !price || !dots) return;
+
+  const products = state.products.filter((product) => product && product.id != null);
+  if (heroCarouselIndex >= products.length) heroCarouselIndex = 0;
+  if (!products.length) {
+    link.removeAttribute('href');
+    link.setAttribute('aria-disabled', 'true');
+    image.removeAttribute('src');
+    image.alt = '';
+    name.textContent = 'لا توجد منتجات متاحة حاليًا';
+    category.textContent = 'منتجات المتجر';
+    price.textContent = '';
+    dots.replaceChildren();
+    previous?.classList.add('hidden');
+    next?.classList.add('hidden');
+    if (heroCarouselTimer) window.clearInterval(heroCarouselTimer);
+    heroCarouselTimer = null;
+    return;
+  }
+  if (products.length < 2 && heroCarouselTimer) {
+    window.clearInterval(heroCarouselTimer);
+    heroCarouselTimer = null;
+  }
+
+  const showSlide = (index) => {
+    heroCarouselIndex = (index + products.length) % products.length;
+    const product = products[heroCarouselIndex];
+    link.href = productPageUrl(product.id);
+    link.removeAttribute('aria-disabled');
+    link.setAttribute('aria-label', `عرض تفاصيل ${product.name || 'المنتج'}`);
+    image.classList.remove('hidden');
+    image.src = product.images?.[0] || '';
+    image.alt = product.name || 'منتج من المتجر';
+    name.textContent = product.name || 'منتج من المتجر';
+    category.textContent = product.category || 'منتجات المتجر';
+    price.textContent = product.price ? `السعر: ${product.price}` : '';
+    dots.querySelectorAll('button').forEach((dot, dotIndex) => {
+      dot.classList.toggle('is-active', dotIndex === heroCarouselIndex);
+      dot.setAttribute('aria-current', dotIndex === heroCarouselIndex ? 'true' : 'false');
+      dot.setAttribute('aria-label', `عرض ${products[dotIndex].name || `المنتج ${dotIndex + 1}`}`);
+    });
+  };
+
+  if (dots.childElementCount !== products.length) {
+    dots.innerHTML = products.map((product, index) => `<button class="hero-carousel-dot" type="button" data-hero-index="${index}" aria-label="عرض ${escapeHtml(product.name || `المنتج ${index + 1}`)}"></button>`).join('');
+  }
+  previous?.classList.toggle('hidden', products.length < 2);
+  next?.classList.toggle('hidden', products.length < 2);
+  showSlide(heroCarouselIndex);
+
+  if (!heroCarouselEventsReady) {
+    image.addEventListener('error', () => image.classList.add('hidden'));
+    previous?.addEventListener('click', () => { heroCarouselIndex -= 1; renderHeroCarousel(); });
+    next?.addEventListener('click', () => { heroCarouselIndex += 1; renderHeroCarousel(); });
+    dots.addEventListener('click', (event) => {
+      const dot = event.target.closest('[data-hero-index]');
+      if (dot) { heroCarouselIndex = Number(dot.dataset.heroIndex); renderHeroCarousel(); }
+    });
+    const pause = () => {
+      if (heroCarouselTimer) window.clearInterval(heroCarouselTimer);
+      heroCarouselTimer = null;
+    };
+    const resume = () => {
+      if (state.products.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && !heroCarouselTimer) {
+        heroCarouselTimer = window.setInterval(() => { heroCarouselIndex += 1; renderHeroCarousel(); }, 5000);
+      }
+    };
+    const stage = link.closest('.hero-display-stage');
+    stage?.addEventListener('mouseenter', pause);
+    stage?.addEventListener('mouseleave', resume);
+    stage?.addEventListener('focusin', pause);
+    stage?.addEventListener('focusout', (event) => {
+      if (!stage.contains(event.relatedTarget)) resume();
+    });
+    heroCarouselEventsReady = true;
+  }
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && products.length > 1 && !heroCarouselTimer) {
+    heroCarouselTimer = window.setInterval(() => { heroCarouselIndex += 1; renderHeroCarousel(); }, 5000);
+  }
+}
 
 async function syncProductsWithServer() {
   const response = await fetch('/api/products');
@@ -346,6 +440,7 @@ function initializeScrollProgress() {
 }
 
 function renderProducts() {
+  renderHeroCarousel();
   const grid = document.getElementById('productGrid');
   const countEl = document.getElementById('productCount');
   const searchValue = document.getElementById('productSearch')?.value?.trim().toLowerCase() || '';
